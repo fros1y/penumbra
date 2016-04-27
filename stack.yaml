@@ -1,0 +1,8 @@
+flags: {}
+extra-package-dbs: []
+packages:
+- '.'
+extra-deps:
+- hscurses-1.4.2.0
+- text-1.2.2.1
+resolver: lts-5.13
