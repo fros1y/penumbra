@@ -1,7 +1,4 @@
 module UI where
-import Types
-import Coord
-
 import qualified UI.HSCurses.Curses as Curses
 import qualified UI.HSCurses.CursesHelper as Curses
 import qualified Control.Monad.State as S
@@ -9,8 +6,12 @@ import Prelude hiding (Either (..), (.), id)
 import Control.Lens
 import Control.Category
 import Control.Monad (when)
-
 import Data.Maybe (catMaybes, fromJust)
+
+import Types
+import Coord
+import Entity
+
 
 drawCharAt :: SymbolDisplay -> IO ()
 drawCharAt (char, screenCoord) = do
@@ -22,17 +23,15 @@ renderEntity e = (e^.symbol, e^.position)
 
 render :: GameM ()
 render = do
-  S.liftIO $ Curses.erase
-  playerEntityID <- use player
-  playerEntity <- lookupEntitybyID_ playerEntityID
-  levelEntityIDs <- use (currLevel . entityIDs)
-  entities <- mapM lookupEntitybyID levelEntityIDs
-  let symbols = map renderEntity $ playerEntity:catMaybes entities
+  S.liftIO Curses.erase
+  playerEntity <- lookupEntitybyID_ =<< use player
+  entities <- S.liftM catMaybes $ mapM lookupEntitybyID =<< use (currLevel . entityIDs)
+  let symbols = map renderEntity $ playerEntity:entities
       playerPos =  playerEntity ^. position
       shift = fromWorldToScreen playerPos
   screenShifted <- S.liftIO $ mapM shift symbols
   S.liftIO $ mapM_ drawCharAt screenShifted
-  S.liftIO $ Curses.refresh
+  S.liftIO Curses.refresh
 
 initDisplay :: IO ()
 initDisplay = do

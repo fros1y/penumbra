@@ -3,8 +3,9 @@ module Types where
 import Prelude hiding (Either (..), (.), id)
 import Control.Lens
 import qualified Control.Monad.State as S
-import Data.Map as Map
+import Data.Map.Strict as Map
 import Data.Maybe (fromJust)
+import Control.Category
 
 data Direction = Up | Down | Left | Right deriving (Show, Eq)
 
@@ -27,8 +28,7 @@ data Damageable = Damageable {
   _currHealth :: Int
 } deriving Show
 
-data EntityType = Tile
-                | Player
+data EntityType = Player
                 | Monster
                 deriving (Show, Eq)
 
@@ -74,24 +74,14 @@ data World = World {
 data PlayerCommand  = Go Direction
                     | Quit deriving (Show, Eq)
 
+
+
+
+
+
 makeLenses ''Entity
 makeLenses ''Obstruction
 makeLenses ''Damageable
 makeLenses ''World
 makeLenses ''Coord
 makeLenses ''Types.Level
-
-
-lookupEntitybyID :: EntityID -> GameM (Maybe Entity)
-lookupEntitybyID key = do
-  entityMap <- use allEntities
-  return $ Map.lookup key entityMap
-
-lookupEntitybyID_ :: EntityID -> GameM (Entity)
-lookupEntitybyID_ key = do
-  entityMap <- use allEntities
-  return $ fromJust $ Map.lookup key entityMap
-
-updateEntitybyID :: EntityID -> Entity -> GameM ()
-updateEntitybyID eID e = do
-  allEntities %= Map.insert eID e
