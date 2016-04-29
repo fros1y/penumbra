@@ -7,30 +7,35 @@ import Control.Lens
 import Control.Category
 import Control.Monad (when)
 import Data.Maybe (catMaybes, fromJust)
+import Data.Map.Strict
 
 import Types
 import Coord
 import Entity
 
+renderAt :: (Renderable a) => (ScreenCoord, a) -> IO ()
+renderAt (coord, a) = do
+  withinBounds <- fmap (within coord) screenBounds
+  when withinBounds $
+    Curses.mvWAddStr Curses.stdScr (fromInteger $ coord^.x) (fromInteger $ coord^.y) $ [getSymbol a]
 
-drawCharAt :: SymbolDisplay -> IO ()
-drawCharAt (char, screenCoord) = do
-  withinBounds <- fmap (within screenCoord) screenBounds
-  when withinBounds $ Curses.mvWAddStr Curses.stdScr (fromInteger $ screenCoord^.x) (fromInteger $ screenCoord^.y) [char]
-
-renderEntity :: Entity -> SymbolDisplay
-renderEntity e = (e^.symbol, e^.position)
+renderCoordMap :: (Renderable a) => WorldCoord -> CoordMap a -> IO ()
+renderCoordMap playerCoord coordMap = do
+  let list = toList coordMap
+  mapped <- mapM (fromWorldToScreen playerCoord) list
+  mapM_ renderAt mapped
 
 render :: GameM ()
 render = do
   S.liftIO Curses.erase
-  playerEntity <- lookupEntitybyID_ =<< use player
-  entities <- S.liftM catMaybes $ mapM lookupEntitybyID =<< use (currLevel . entityIDs)
-  let symbols = map renderEntity $ playerEntity:entities
-      playerPos =  playerEntity ^. position
-      shift = fromWorldToScreen playerPos
-  screenShifted <- S.liftIO $ mapM shift symbols
-  S.liftIO $ mapM_ drawCharAt screenShifted
+  levelTiles <- use (currLevel . tiles)
+  levelEntities <- use (currLevel . entities)
+  playerE <- use player
+  playerPos <- use playerCoord
+  offsetPlayer <- S.liftIO $ fromWorldToScreen playerPos (playerPos, playerE)
+  S.liftIO $ renderAt offsetPlayer
+  S.liftIO $ renderCoordMap playerPos levelTiles
+  S.liftIO $ renderCoordMap playerPos levelEntities
   S.liftIO Curses.refresh
 
 initDisplay :: IO ()
@@ -51,6 +56,8 @@ playerCommandFromKey k = case k of
   Curses.KeyLeft -> Just $ Go Left
   Curses.KeyRight -> Just $ Go Right
   Curses.KeyChar 'q' -> Just Quit
+  Curses.KeyChar 's' -> Just Save
+  Curses.KeyChar 'l' -> Just Load
   _ -> Nothing
 
 getPlayerCommand :: IO (Maybe PlayerCommand)
@@ -66,12 +73,12 @@ screenBounds :: IO Bounds
 screenBounds = fmap (Bounds (Coord 0 0)) screenSize
 
 
-fromWorldToScreen :: Coord -> SymbolDisplay -> IO SymbolDisplay
-fromWorldToScreen playerCoord (symbol, worldCoord) = do
+fromWorldToScreen :: WorldCoord -> (WorldCoord, a) -> IO (ScreenCoord, a)
+fromWorldToScreen playerCoord (worldCoord, a) = do
   screen <- screenSize
   let
     mx = screen^.x `quot` 2
     my = screen^.y `quot` 2
     screenMiddle = Coord mx my
   let offset = playerCoord - screenMiddle
-  return (symbol, worldCoord - offset)
+  return (worldCoord - offset, a)
