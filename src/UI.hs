@@ -4,29 +4,35 @@ import Coord
 
 import qualified UI.HSCurses.Curses as Curses
 import qualified UI.HSCurses.CursesHelper as Curses
-
+import qualified Control.Monad.State as S
 import Prelude hiding (Either (..), (.), id)
-import Data.Label
+import Control.Lens
 import Control.Category
 import Control.Monad (when)
+
+import Data.Maybe (catMaybes, fromJust)
 
 drawCharAt :: SymbolDisplay -> IO ()
 drawCharAt (char, screenCoord) = do
   withinBounds <- fmap (within screenCoord) screenBounds
-  when withinBounds $ Curses.mvWAddStr Curses.stdScr (fromInteger $ x screenCoord) (fromInteger $ y screenCoord) [char]
+  when withinBounds $ Curses.mvWAddStr Curses.stdScr (fromInteger $ screenCoord^.x) (fromInteger $ screenCoord^.y) [char]
 
 renderEntity :: Entity -> SymbolDisplay
-renderEntity e = (get symbol e, get position e)
+renderEntity e = (e^.symbol, e^.position)
 
-render :: World -> IO ()
-render world = do
-  Curses.erase
-  let symbols = map renderEntity ((get player world):(get currLevel world))
-  let playerPos = (get (position . player) world)
+render :: GameM ()
+render = do
+  S.liftIO $ Curses.erase
+  playerEntityID <- use player
+  playerEntity <- lookupEntitybyID_ playerEntityID
+  levelEntityIDs <- use (currLevel . entityIDs)
+  entities <- mapM lookupEntitybyID levelEntityIDs
+  let symbols = map renderEntity $ playerEntity:catMaybes entities
+      playerPos =  playerEntity ^. position
       shift = fromWorldToScreen playerPos
-  screenShifted <- mapM shift symbols
-  mapM_ drawCharAt screenShifted
-  Curses.refresh
+  screenShifted <- S.liftIO $ mapM shift symbols
+  S.liftIO $ mapM_ drawCharAt screenShifted
+  S.liftIO $ Curses.refresh
 
 initDisplay :: IO ()
 initDisplay = do
@@ -65,8 +71,8 @@ fromWorldToScreen :: Coord -> SymbolDisplay -> IO SymbolDisplay
 fromWorldToScreen playerCoord (symbol, worldCoord) = do
   screen <- screenSize
   let
-    mx = (x screen) `quot` 2
-    my = (y screen) `quot` 2
+    mx = screen^.x `quot` 2
+    my = screen^.y `quot` 2
     screenMiddle = Coord mx my
   let offset = playerCoord - screenMiddle
   return (symbol, worldCoord - offset)

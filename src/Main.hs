@@ -1,5 +1,5 @@
 import Prelude hiding (Either (..), (.), id)
-import Data.Label
+
 import Control.Category
 import qualified Control.Monad.State as S
 import Control.Monad.Random
@@ -9,47 +9,88 @@ import UI
 import Coord
 
 import Control.Monad (unless)
+import Control.Lens
 
-moveEntity :: Entity -> Direction -> Entity
-moveEntity e d = set position position' e where
-  position' = get position e + fromDirection d
+import Data.Map as Map
 
-mkEntity :: Char -> Coord -> Entity
-mkEntity sym pos = Entity pos sym Nothing
+moveEntity :: Direction -> Entity -> Entity
+moveEntity d = position %~ (+) (fromDirection d)
 
-mkRandomLevel :: Bounds -> GameM Level
+registerEntity :: Entity -> GameM EntityID
+registerEntity entity = do
+  newID <- use nextEntityID
+  nextEntityID %= (+ 1)
+  allEntities %= (Map.insert newID (entityID .~ newID $ entity))
+  return newID
+
+normalObstruction :: EntityBuilder
+normalObstruction = obstruction .~ Just obs where
+  obs = Obstruction {_transparent = False, _flyOver = False}
+
+obstructingTile :: EntityBuilder
+obstructingTile = normalObstruction .
+                  (entityType .~ Tile) .
+                  (damageable .~ Nothing) .
+                  (behavior .~ Nothing)
+
+baseEntity :: Coord -> Symbol -> Entity
+baseEntity pos sym =  (position .~ pos) .
+                      (symbol .~ sym) .
+                      (behavior .~ Nothing) $ Entity {_entityID = -1}
+
+mkBasicRock :: Coord -> GameM EntityID
+mkBasicRock coord = registerEntity $ obstructingTile $ baseEntity coord '#'
+
+mkPlayer :: Coord -> GameM EntityID
+mkPlayer coord = registerEntity $ baseEntity coord '@'
+
+mkLevel :: Bounds -> [EntityID] -> Types.Level
+mkLevel boundary entities = (entityIDs .~ entities) .
+                 (bounds .~ boundary) $ Level {}
+
+addEntityID :: EntityID -> Types.Level -> Types.Level
+addEntityID eID level = entityIDs %~ addE $ level where
+  addE list = eID : list
+
+
+
+mkRandomLevel :: Bounds -> GameM Types.Level
 mkRandomLevel bounds = do
   let boundary = borderCoords bounds
   randomPillarLocations <- S.forM [1 .. 20] $ \_i -> randomWithin bounds
-  return $ map (mkEntity '#') (randomPillarLocations ++ boundary)
+  rocks <- mapM mkBasicRock (randomPillarLocations ++ boundary)
+  return $ mkLevel bounds rocks
+
 
 main :: IO ()
 main = do
   initDisplay
-  let world = World (mkEntity '@' (Coord 0 0)) []
+  let world = World {_nextEntityID = 1, _allEntities = Map.empty}
   S.runStateT setup world
   endDisplay
 
-update :: World -> Maybe PlayerCommand -> World
-update = updatePlayer
+update :: Maybe PlayerCommand -> GameM ()
+update command = updatePlayer command
 
-updatePlayer :: World -> Maybe PlayerCommand -> World
-updatePlayer w Nothing = w
-updatePlayer w (Just (Go d)) = set player player' w where
-   player' = moveEntity (get player w) d
+updatePlayer :: Maybe PlayerCommand -> GameM ()
+updatePlayer Nothing = return ()
+updatePlayer (Just (Go d)) = do
+  playerID <- use player
+  playerEntity <- lookupEntitybyID_ playerID
+  updateEntitybyID playerID $ moveEntity d playerEntity
 
 setup :: GameM ()
 setup = do
-  world <- S.get
   S.liftIO (setStdGen $ mkStdGen 1)
+  playerID <- mkPlayer (Coord 5 5)
+  player .= playerID
   randomLevel <- mkRandomLevel $ Bounds origin (Coord 20 40)
-  S.put $ set currLevel randomLevel world
+  currLevel .= randomLevel
   gameLoop
 
 gameLoop :: GameM ()
 gameLoop = do
-  world <- S.get
-  S.liftIO $ render world
+  render
   command <- S.liftIO getPlayerCommand
-  S.put $ update world command
+  Main.update command
   unless (command == Just Quit) gameLoop

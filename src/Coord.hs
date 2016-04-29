@@ -20,11 +20,6 @@ toPair (Coord x y) = (x, y)
 fromPair :: (Integer, Integer) -> Coord
 fromPair (x, y) = Coord x y
 
-data Bounds = Bounds {
-  upper :: Coord,
-  lower :: Coord
-  } deriving (Eq, Show, Ord)
-
 coordsWithin :: Bounds -> [Coord]
 coordsWithin (Bounds (Coord lx ly) (Coord ux uy)) =
   [Coord x y | x<-[lx..ux], y<-[ly..uy]]
