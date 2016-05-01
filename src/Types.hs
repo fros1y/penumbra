@@ -11,6 +11,13 @@ import Data.Maybe (fromJust)
 import Control.Category
 import GHC.Generics
 import Data.Default
+import SFML.Graphics
+import SFML.Window
+
+data DisplayContext = DisplayContext {
+  _wnd :: RenderWindow,
+  _fnt :: Font
+}
 
 data Direction = Up | Down | Left | Right deriving (Show, Read, Eq, Generic)
 
@@ -24,8 +31,9 @@ data Coord = Coord {
 instance Default Coord where
   def = Coord 0 0
 
-type ScreenCoord = Coord
+
 type WorldCoord = Coord
+type ScreenCoord = Coord
 
 data Bounds = Bounds {
   upper :: Coord,
@@ -117,3 +125,4 @@ makeLenses ''World
 makeLenses ''Coord
 makeLenses ''Types.Level
 makeLenses ''Specifics
+makeLenses ''DisplayContext

@@ -14,6 +14,9 @@ instance Num Coord where
   fromInteger i = Coord i' i' where
     i' = fromInteger i
 
+quot :: Coord -> Coord -> Coord
+quot (Coord ax ay) (Coord bx by) = Coord (ax `Prelude.quot` bx) (ay `Prelude.quot` by)
+
 toPair :: Coord -> (Integer, Integer)
 toPair (Coord x y) = (x, y)
 
@@ -28,8 +31,13 @@ borderCoords :: Bounds -> [Coord]
 borderCoords (Bounds (Coord lx ly) (Coord ux uy)) =
   [Coord x y | x<-[lx..ux], y<-[ly..uy], x == lx || x == ux || y == ly || y == uy]
 
+between :: (Ord a) => a -> a -> a -> Bool
+between test lower upper = test >= lower && test < upper
+
 within :: Coord -> Bounds -> Bool
-within c bounds = c `elem` coordsWithin bounds
+within (Coord cx cy) (Bounds (Coord lx ly) (Coord ux uy)) = withinX && withinY where
+  withinX = between cx lx ux
+  withinY = between cy ly uy
 
 randomWithin :: MonadRandom m => Bounds -> m Coord
 randomWithin b = uniform (coordsWithin b)
@@ -43,3 +51,6 @@ fromDirection d = case d of
 
 origin :: Coord
 origin = Coord 0 0
+
+flipOrder :: Coord -> Coord
+flipOrder (Coord x y) = Coord y x
