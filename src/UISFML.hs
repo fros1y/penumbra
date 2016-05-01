@@ -19,9 +19,9 @@ initDisplay = do
   let ctxSettings = Just $ ContextSettings 24 8 0 1 2 [ContextDefault]
   wnd <- createRenderWindow (VideoMode 1200 800 32) "Penumbra" [SFDefaultStyle, SFResize] ctxSettings
   setFramerateLimit wnd 60
-  let fontPath = "unifont.ttf"
+  let fontPath = "DejaVuSansMono.ttf"
   fnt <- err $ fontFromFile fontPath
-  return DisplayContext { _wnd = wnd, _fnt = fnt }
+  return DisplayContext { _wnd = wnd, _fnt = fnt}
 
 endDisplay :: DisplayContext -> IO ()
 endDisplay context = do
@@ -35,7 +35,8 @@ screenSize = do
   return $ Coord (fromIntegral xsize) (fromIntegral ysize)
 
 cellSize :: (?context :: DisplayContext) => ScreenCoord
-cellSize = Coord 15 10
+cellSize = Coord (floor (fontSize * 1.5)) (floor fontSize) where
+  fontSize = 12
 
 screenSizeCells :: (?context :: DisplayContext) => IO (Coord)
 screenSizeCells = do
@@ -44,18 +45,10 @@ screenSizeCells = do
   return $ cellCount
 
 celltoScreen :: (?context :: DisplayContext) => Coord -> ScreenCoord
-celltoScreen coord = flipOrder(coord * cellSize)
+celltoScreen coord = flipOrder $ coord * cellSize
 
 fromWorldToScreen :: (?context :: DisplayContext) => WorldCoord -> (WorldCoord, a) -> IO (ScreenCoord, a)
-fromWorldToScreen playerCoord (worldCoord, a) = return ( celltoScreen worldCoord, a)
--- fromWorldToScreen playerCoord (worldCoord, a) = do
---   sizeCells <- screenSizeCells
---   traceIO $ "screenSizeCells: " ++ show sizeCells
---   let screenMiddle = sizeCells `Coord.quot` (Coord 2 2)
---       offset = playerCoord - screenMiddle
---   traceIO $ "screenMiddle: " ++ show screenMiddle
---   return ( celltoScreen (worldCoord - offset), a)
-
+fromWorldToScreen playerCoord (worldCoord, a) = return (celltoScreen worldCoord, a)
 
 renderAt :: (?context :: DisplayContext, Renderable a) => DisplayContext -> (ScreenCoord, a) -> IO ()
 renderAt context (coord, a) = do
@@ -82,6 +75,7 @@ renderCoordMap context playerCoord coordMap = do
 
 
 convert (Vec2u xu yu) = Vec2f (fromIntegral xu) (fromIntegral yu)
+convertfromCoord (Coord xc yc) = Vec2f (fromIntegral xc) (fromIntegral yc)
 
 render :: (?context :: DisplayContext) => GameM ()
 render = do
@@ -91,6 +85,9 @@ render = do
   playerE <- use player
   playerPos <- use playerCoord
   offsetPlayer <- S.liftIO $ fromWorldToScreen playerPos (playerPos, playerE)
+  view <- S.liftIO createView
+  S.liftIO $ setViewCenter view (convertfromCoord $ celltoScreen playerPos)
+  S.liftIO $ setView (?context ^. wnd) view
   S.liftIO $ renderAt ?context offsetPlayer
   S.liftIO $ renderCoordMap ?context playerPos levelTiles
   S.liftIO $ renderCoordMap ?context playerPos levelEntities
