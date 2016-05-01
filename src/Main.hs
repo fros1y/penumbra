@@ -31,8 +31,9 @@ mkRandomLevel :: Bounds -> GameM Types.Level
 mkRandomLevel bounds = do
   let boundary = borderCoords bounds
   randomPillarLocations <- S.forM [1 .. 20] $ \_i -> randomWithin bounds
-  let rocks = fmap mkWall (randomPillarLocations ++ boundary)
-  return $ mkLevel bounds (Map.fromList rocks) Map.empty
+  let rocks = fmap mkWall boundary
+  let pillars = fmap mkPillar randomPillarLocations
+  return $ mkLevel bounds (Map.fromList $ rocks ++ pillars) Map.empty
 
 main :: IO ()
 main = do
@@ -54,7 +55,6 @@ setup = do
   S.liftIO (setStdGen $ mkStdGen 1)
   playerCoord .= Coord 10 10
   clevel <- mkRandomLevel $ Bounds origin (Coord 20 20)
-  -- clevel <- mkBoringLevel $ Bounds origin (Coord 20 40)
   currLevel .= clevel
   turnCount .= 0
   gameLoop

@@ -14,7 +14,7 @@ import Coord
 import Debug.Trace
 import Data.Map.Strict as Map
 
-initDisplay :: IO (DisplayContext)
+initDisplay :: IO DisplayContext
 initDisplay = do
   let ctxSettings = Just $ ContextSettings 24 8 0 1 2 [ContextDefault]
   wnd <- createRenderWindow (VideoMode 1200 800 32) "Penumbra" [SFDefaultStyle, SFResize] ctxSettings
@@ -29,7 +29,7 @@ endDisplay context = do
   destroy (context ^. fnt)
   return ()
 
-screenSize :: (?context :: DisplayContext) => IO (ScreenCoord)
+screenSize :: (?context :: DisplayContext) => IO ScreenCoord
 screenSize = do
   (Vec2u xsize ysize) <- getWindowSize (?context ^. wnd)
   return $ Coord (fromIntegral xsize) (fromIntegral ysize)
@@ -38,11 +38,11 @@ cellSize :: (?context :: DisplayContext) => ScreenCoord
 cellSize = Coord (floor (fontSize * 1.5)) (floor fontSize) where
   fontSize = 12
 
-screenSizeCells :: (?context :: DisplayContext) => IO (Coord)
+screenSizeCells :: (?context :: DisplayContext) => IO Coord
 screenSizeCells = do
   size <- screenSize
   let cellCount = size `Coord.quot` cellSize
-  return $ cellCount
+  return cellCount
 
 celltoScreen :: (?context :: DisplayContext) => Coord -> ScreenCoord
 celltoScreen coord = flipOrder $ coord * cellSize
@@ -53,18 +53,19 @@ fromWorldToScreen playerCoord (worldCoord, a) = return (celltoScreen worldCoord,
 renderAt :: (?context :: DisplayContext, Renderable a) => DisplayContext -> (ScreenCoord, a) -> IO ()
 renderAt context (coord, a) = do
   size <- screenSize
-  let bounds = (Bounds origin size)
+  let bounds = Bounds origin size
       withinBounds = within coord bounds
   S.when withinBounds $ do
-    txt <- err $ createText
-    setTextString txt [getSymbol a]
+    -- FIXME proper error handling
+    txt <- err createText
+    setTextStringU txt [getSymbol a]
     setTextFont txt (context ^. fnt)
     setTextCharacterSize txt $ fromInteger (cellSize ^. Types.x)
     setTextColor txt white
     let state = Just (renderStates { SFML.Graphics.transform = translation tx ty})
         tx = fromInteger (coord ^. Types.x)
         ty = fromInteger (coord ^. Types.y)
-    drawText (context ^. wnd) txt $ state
+    drawText (context ^. wnd) txt state
     destroy txt
 
 renderCoordMap :: (?context :: DisplayContext, Renderable a) => DisplayContext -> WorldCoord -> CoordMap a -> IO ()
@@ -85,18 +86,19 @@ render = do
   playerE <- use player
   playerPos <- use playerCoord
   offsetPlayer <- S.liftIO $ fromWorldToScreen playerPos (playerPos, playerE)
-  view <- S.liftIO createView
-  S.liftIO $ setViewCenter view (convertfromCoord $ celltoScreen playerPos)
-  S.liftIO $ setView (?context ^. wnd) view
-  S.liftIO $ renderAt ?context offsetPlayer
-  S.liftIO $ renderCoordMap ?context playerPos levelTiles
-  S.liftIO $ renderCoordMap ?context playerPos levelEntities
-  S.liftIO $ display (?context ^. wnd)
+  view <- S.liftIO $ getDefaultView (?context ^. wnd)
+  S.liftIO $ do
+    setViewCenter view (convertfromCoord $ celltoScreen playerPos)
+    setView (?context ^. wnd) view
+    renderAt ?context offsetPlayer
+    renderCoordMap ?context playerPos levelTiles
+    renderCoordMap ?context playerPos levelEntities
+    display (?context ^. wnd)
 
 handleResize :: (?context :: DisplayContext) => Int -> Int -> IO ()
 handleResize w h = do
   setWindowSize (?context ^. wnd) (Vec2u (fromIntegral w) (fromIntegral h))
-  view <- createView
+  view <- getDefaultView (?context ^. wnd)
   resetView view (FloatRect 0 0 (fromIntegral w) (fromIntegral h))
   setView (?context ^. wnd) view
   return ()
@@ -111,15 +113,15 @@ getPlayerCommand = do
     Just SFEvtResized {width = w, height = h} -> do
       handleResize w h
       return Nothing
-    Just kEvt@(SFEvtKeyPressed{}) -> return (playerCommandFromKey kEvt)
+    Just kEvt@SFEvtKeyPressed{} -> return (playerCommandFromKey kEvt)
     Just _ -> return Nothing
 
 playerCommandFromKey :: SFEvent -> Maybe PlayerCommand
-playerCommandFromKey (SFEvtKeyPressed {code = keyCode,
+playerCommandFromKey SFEvtKeyPressed {code = keyCode,
                                       alt = altK,
                                       ctrl = ctrlK,
                                       shift = shiftK,
-                                      sys = sysK}) = case (keyCode, shiftK) of
+                                      sys = sysK} = case (keyCode, shiftK) of
                                         (KeyUp, _) -> Just $ Go Up
                                         (KeyDown, _) -> Just $ Go Down
                                         (KeyLeft, _) -> Just $ Go Left

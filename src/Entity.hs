@@ -11,3 +11,6 @@ import Coord
 
 mkWall :: WorldCoord -> (WorldCoord, Maybe Tile)
 mkWall coord = (coord, Just (Wall def))
+
+mkPillar :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkPillar coord = (coord, Just (Pillar def))
