@@ -19,7 +19,6 @@ executable penumbra
   build-depends:        base >= 4.7 && < 5,
                         random,
                         MonadRandom,
-                        hscurses,
                         containers,
                         lens,
                         mtl,
