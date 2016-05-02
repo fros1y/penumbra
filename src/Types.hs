@@ -14,6 +14,8 @@ import Data.Default
 import SFML.Graphics
 import SFML.Window
 import Debug.Trace
+import Data.Colour as Colour
+import Data.Colour.Names as Colour
 
 data DisplayContext = DisplayContext {
   _wnd :: RenderWindow,
@@ -51,8 +53,8 @@ data Entity = GenericEntity |
 
 instance Renderable Entity where
   getSymbol GenericEntity = def
-  getSymbol (Player _) = Symbol '@' white Nothing
-  getSymbol (Rat _)    = Symbol 'r' white Nothing
+  getSymbol (Player _) = Symbol '@' Colour.white Nothing
+  getSymbol (Rat _)    = Symbol 'r' Colour.white Nothing
 
 instance Default Entity where
   def = GenericEntity
@@ -79,12 +81,12 @@ instance Default World where
 
 data Symbol = Symbol {
   _glyph :: Char,
-  _baseColor :: Color,
+  _baseColor :: Colour.Colour Double,
   _changeOverTime :: Maybe (Time -> Symbol)
 } deriving (Generic)
 
 instance Default Symbol where
-  def = Symbol '?' white Nothing
+  def = Symbol '?' Colour.white Nothing
 
 data PlayerCommand  = Go Direction
                     | Save
@@ -128,16 +130,16 @@ instance (Renderable a) => Renderable (Maybe a) where
 
 flicker :: Time -> Symbol
 flicker t = Symbol '◯' color Nothing where
-  one = yellow
-  two = red
-  blend = sin ((fromIntegral (asMilliseconds t) ) / 100)
-  color = if blend > 0 then yellow else red
+  one = Colour.yellow
+  two = Colour.red
+  blend = abs ( sin ((fromIntegral (asMilliseconds t) ) / 1000) )
+  color = Colour.blend blend one two
 
 instance Renderable Tile where
-  getSymbol (Floor _) = Symbol '·' white Nothing
-  getSymbol (Wall _) = Symbol '#' white Nothing
-  getSymbol (Pillar _) = Symbol '◯' yellow (Just flicker)
-  getSymbol (Tree _) = Symbol '▲' green Nothing
+  getSymbol (Floor _) = Symbol '·' Colour.white Nothing
+  getSymbol (Wall _) = Symbol '#' Colour.white Nothing
+  getSymbol (Pillar _) = Symbol '◯' Colour.yellow (Just flicker)
+  getSymbol (Tree _) = Symbol '▲' Colour.green Nothing
 
 makeLenses ''World
 makeLenses ''Coord

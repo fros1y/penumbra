@@ -15,6 +15,9 @@ import Debug.Trace
 import Data.Map.Strict as Map
 
 import Data.Maybe (isJust, fromJust, isNothing)
+import Data.Colour as Colour
+import Data.Colour.Names as Colour
+import Data.Colour.SRGB as Colour
 
 tracePipe msg value = trace (msg ++ show value) value
 
@@ -56,6 +59,10 @@ celltoScreen coord = flipOrder $ coord * cellSize
 fromWorldToScreen :: (?context :: DisplayContext) => WorldCoord -> (WorldCoord, a) -> IO (ScreenCoord, a)
 fromWorldToScreen playerCoord (worldCoord, a) = return (celltoScreen worldCoord, a)
 
+convertColourToSFML :: Colour.Colour Double -> Color
+convertColourToSFML c = Color r g b 255 where
+  Colour.RGB r g b = Colour.toSRGB24 c
+
 putSymbol :: (?context :: DisplayContext) => Coord -> Symbol -> IO ()
 putSymbol coord symbol = do
   size <- screenSize
@@ -67,7 +74,7 @@ putSymbol coord symbol = do
   setTextStringU txt [t]
   setTextFont txt (?context ^. fnt)
   setTextCharacterSize txt fontSize
-  setTextColor txt c
+  setTextColor txt $ convertColourToSFML c
   setPosition txt v
   drawText (?context ^. wnd) txt (Just renderStates)
   destroy txt
