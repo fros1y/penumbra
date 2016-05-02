@@ -54,3 +54,9 @@ origin = Coord 0 0
 
 flipOrder :: Coord -> Coord
 flipOrder (Coord x y) = Coord y x
+
+insetBounds :: Integer -> Bounds -> Bounds
+insetBounds i (Bounds l u) = (Bounds l' u') where
+  offset = (Coord i i)
+  l' = l + offset
+  u' = u - offset
