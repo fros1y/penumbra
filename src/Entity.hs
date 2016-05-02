@@ -14,3 +14,6 @@ mkWall coord = (coord, Just (Wall def))
 
 mkPillar :: WorldCoord -> (WorldCoord, Maybe Tile)
 mkPillar coord = (coord, Just (Pillar def))
+
+mkTree :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkTree coord = (coord, Just (Tree def))

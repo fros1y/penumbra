@@ -13,10 +13,12 @@ import GHC.Generics
 import Data.Default
 import SFML.Graphics
 import SFML.Window
+import Debug.Trace
 
 data DisplayContext = DisplayContext {
   _wnd :: RenderWindow,
-  _fnt :: Font
+  _fnt :: Font,
+  _clock :: Clock
 }
 
 data Direction = Up | Down | Left | Right deriving (Show, Read, Eq, Generic)
@@ -48,9 +50,9 @@ data Entity = GenericEntity |
               Rat Specifics deriving (Show, Read, Eq, Generic)
 
 instance Renderable Entity where
-  getSymbol GenericEntity = '?'
-  getSymbol (Player _) = '@'
-  getSymbol (Rat _)    = 'r'
+  getSymbol GenericEntity = def
+  getSymbol (Player _) = Symbol '@' white Nothing
+  getSymbol (Rat _)    = Symbol 'r' white Nothing
 
 instance Default Entity where
   def = GenericEntity
@@ -75,7 +77,14 @@ instance Default World where
   def = World 0 player def def where
     player = Player def
 
-type Symbol = Char
+data Symbol = Symbol {
+  _glyph :: Char,
+  _baseColor :: Color,
+  _changeOverTime :: Maybe (Time -> Symbol)
+} deriving (Generic)
+
+instance Default Symbol where
+  def = Symbol '?' white Nothing
 
 data PlayerCommand  = Go Direction
                     | Save
@@ -106,6 +115,7 @@ instance Default Specifics where
   def = Specifics Nothing Nothing
 
 data Tile =  Floor Specifics
+          |  Tree Specifics
           |  Wall Specifics
           |  Pillar Specifics deriving (Show, Read, Eq, Generic)
 
@@ -114,15 +124,24 @@ instance Default Tile where
 
 instance (Renderable a) => Renderable (Maybe a) where
   getSymbol (Just a) = getSymbol a
-  getSymbol _ = ' '
+  getSymbol _ = def
+
+flicker :: Time -> Symbol
+flicker t = Symbol '◯' color Nothing where
+  one = yellow
+  two = red
+  blend = sin ((fromIntegral (asMilliseconds t) ) / 100)
+  color = if blend > 0 then yellow else red
 
 instance Renderable Tile where
-  getSymbol (Floor _) = '.'
-  getSymbol (Wall _) = '#'
-  getSymbol (Pillar _) = '|'
+  getSymbol (Floor _) = Symbol '·' white Nothing
+  getSymbol (Wall _) = Symbol '#' white Nothing
+  getSymbol (Pillar _) = Symbol '◯' yellow (Just flicker)
+  getSymbol (Tree _) = Symbol '▲' green Nothing
 
 makeLenses ''World
 makeLenses ''Coord
 makeLenses ''Types.Level
 makeLenses ''Specifics
 makeLenses ''DisplayContext
+makeLenses ''Symbol

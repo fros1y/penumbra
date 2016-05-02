@@ -14,14 +14,19 @@ import Coord
 import Debug.Trace
 import Data.Map.Strict as Map
 
+import Data.Maybe (isJust, fromJust, isNothing)
+
+tracePipe msg value = trace (msg ++ show value) value
+
 initDisplay :: IO DisplayContext
 initDisplay = do
   let ctxSettings = Just $ ContextSettings 24 8 0 1 2 [ContextDefault]
   wnd <- createRenderWindow (VideoMode 1200 800 32) "Penumbra" [SFDefaultStyle, SFResize] ctxSettings
   setFramerateLimit wnd 60
-  let fontPath = "DejaVuSansMono.ttf"
+  let fontPath = "Everson Mono.ttf"
   fnt <- err $ fontFromFile fontPath
-  return DisplayContext { _wnd = wnd, _fnt = fnt}
+  clk <- createClock
+  return DisplayContext { _wnd = wnd, _fnt = fnt, _clock = clk}
 
 endDisplay :: DisplayContext -> IO ()
 endDisplay context = do
@@ -34,9 +39,10 @@ screenSize = do
   (Vec2u xsize ysize) <- getWindowSize (?context ^. wnd)
   return $ Coord (fromIntegral xsize) (fromIntegral ysize)
 
+fontSize = 20
+
 cellSize :: (?context :: DisplayContext) => ScreenCoord
-cellSize = Coord (floor (fontSize * 1.5)) (floor fontSize) where
-  fontSize = 12
+cellSize = Coord (floor ((fromIntegral fontSize) * 0.75)) (floor ((fromIntegral fontSize) * 0.66))
 
 screenSizeCells :: (?context :: DisplayContext) => IO Coord
 screenSizeCells = do
@@ -50,29 +56,41 @@ celltoScreen coord = flipOrder $ coord * cellSize
 fromWorldToScreen :: (?context :: DisplayContext) => WorldCoord -> (WorldCoord, a) -> IO (ScreenCoord, a)
 fromWorldToScreen playerCoord (worldCoord, a) = return (celltoScreen worldCoord, a)
 
-renderAt :: (?context :: DisplayContext, Renderable a) => DisplayContext -> (ScreenCoord, a) -> IO ()
-renderAt context (coord, a) = do
+putSymbol :: (?context :: DisplayContext) => Coord -> Symbol -> IO ()
+putSymbol coord symbol = do
+  size <- screenSize
+  let c = (symbol ^. baseColor)
+      t = (symbol ^. glyph)
+      Coord tx ty = coord
+      v = Vec2f (fromIntegral tx) (fromInteger ty)
+  txt <- err createText
+  setTextStringU txt [t]
+  setTextFont txt (?context ^. fnt)
+  setTextCharacterSize txt fontSize
+  setTextColor txt c
+  setPosition txt v
+  drawText (?context ^. wnd) txt (Just renderStates)
+  destroy txt
+
+renderAt :: (?context :: DisplayContext, Renderable a) => (ScreenCoord, a) -> IO ()
+renderAt (coord, a) = do
   size <- screenSize
   let bounds = Bounds origin size
       withinBounds = within coord bounds
+      symbol = getSymbol a
+      timeBased = (symbol ^. changeOverTime)
   S.when withinBounds $ do
-    -- FIXME proper error handling
-    txt <- err createText
-    setTextStringU txt [getSymbol a]
-    setTextFont txt (context ^. fnt)
-    setTextCharacterSize txt $ fromInteger (cellSize ^. Types.x)
-    setTextColor txt white
-    let state = Just (renderStates { SFML.Graphics.transform = translation tx ty})
-        tx = fromInteger (coord ^. Types.x)
-        ty = fromInteger (coord ^. Types.y)
-    drawText (context ^. wnd) txt state
-    destroy txt
+    S.when (isNothing timeBased) $ putSymbol coord symbol
+    S.when (isJust timeBased) $ do
+      time <- getElapsedTime (?context ^. clock)
+      putSymbol coord ( (fromJust timeBased) time)
+
 
 renderCoordMap :: (?context :: DisplayContext, Renderable a) => DisplayContext -> WorldCoord -> CoordMap a -> IO ()
 renderCoordMap context playerCoord coordMap = do
   let list = Map.toList coordMap
   mapped <- mapM (fromWorldToScreen playerCoord) list
-  mapM_ (renderAt context) mapped
+  mapM_ renderAt mapped
 
 
 convert (Vec2u xu yu) = Vec2f (fromIntegral xu) (fromIntegral yu)
@@ -90,7 +108,7 @@ render = do
   S.liftIO $ do
     setViewCenter view (convertfromCoord $ celltoScreen playerPos)
     setView (?context ^. wnd) view
-    renderAt ?context offsetPlayer
+    renderAt offsetPlayer
     renderCoordMap ?context playerPos levelTiles
     renderCoordMap ?context playerPos levelEntities
     display (?context ^. wnd)
@@ -106,7 +124,7 @@ handleResize w h = do
 
 getPlayerCommand :: (?context :: DisplayContext) => IO (Maybe PlayerCommand)
 getPlayerCommand = do
-  evt <- waitEvent (?context ^. wnd)
+  evt <- pollEvent (?context ^. wnd)
   case evt of
     Nothing -> return Nothing
     Just SFEvtClosed -> return $ Just Quit

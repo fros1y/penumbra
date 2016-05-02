@@ -30,10 +30,12 @@ mkBoringLevel bounds = do
 mkRandomLevel :: Bounds -> GameM Types.Level
 mkRandomLevel bounds = do
   let boundary = borderCoords bounds
-  randomPillarLocations <- S.forM [1 .. 20] $ \_i -> randomWithin bounds
+  randomPillarLocations <- S.forM [1 .. 5] $ \_i -> randomWithin (insetBounds 2 bounds)
+  randomTreeLocations <- S.forM [1..5] $ \_i -> randomWithin (insetBounds 2 bounds)
   let rocks = fmap mkWall boundary
+  let trees = fmap mkTree randomTreeLocations
   let pillars = fmap mkPillar randomPillarLocations
-  return $ mkLevel bounds (Map.fromList $ rocks ++ pillars) Map.empty
+  return $ mkLevel bounds (Map.fromList $ rocks ++ pillars ++ trees) Map.empty
 
 main :: IO ()
 main = do
