@@ -1,7 +1,8 @@
 module Coord where
 
 import Prelude hiding (Either (..), (.), id)
-import Control.Monad.Random
+import Control.Category
+import qualified Control.Monad.Random as Random
 
 import Types
 
@@ -39,8 +40,8 @@ within (Coord cx cy) (Bounds (Coord lx ly) (Coord ux uy)) = withinX && withinY w
   withinX = between cx lx ux
   withinY = between cy ly uy
 
-randomWithin :: MonadRandom m => Bounds -> m Coord
-randomWithin b = uniform (coordsWithin b)
+randomWithin :: Random.MonadRandom m => Bounds -> m Coord
+randomWithin b = Random.uniform (coordsWithin b)
 
 fromDirection :: Direction -> Coord
 fromDirection d = case d of

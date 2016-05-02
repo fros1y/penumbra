@@ -4,23 +4,28 @@
 
 module Types where
 import Prelude hiding (Either (..), (.), id)
+
 import Control.Lens
+import Control.Category
 import qualified Control.Monad.State as S
 import Data.Map.Strict as Map
 import Data.Maybe (fromJust)
-import Control.Category
+
 import GHC.Generics
 import Data.Default
-import SFML.Graphics
-import SFML.Window
-import Debug.Trace
+
+import qualified SFML.Graphics as SFML
+import qualified SFML.Window as SFML
 import Data.Colour as Colour
 import Data.Colour.Names as Colour
 
+import Debug.Trace
+
+
 data DisplayContext = DisplayContext {
-  _wnd :: RenderWindow,
-  _fnt :: Font,
-  _clock :: Clock
+  _wnd :: SFML.RenderWindow,
+  _fnt :: SFML.Font,
+  _clock :: SFML.Clock
 }
 
 data Direction = Up | Down | Left | Right deriving (Show, Read, Eq, Generic)
@@ -82,7 +87,7 @@ instance Default World where
 data Symbol = Symbol {
   _glyph :: Char,
   _baseColor :: Colour.Colour Double,
-  _changeOverTime :: Maybe (Time -> Symbol)
+  _changeOverTime :: Maybe (SFML.Time -> Symbol)
 } deriving (Generic)
 
 instance Default Symbol where
@@ -128,11 +133,11 @@ instance (Renderable a) => Renderable (Maybe a) where
   getSymbol (Just a) = getSymbol a
   getSymbol _ = def
 
-flicker :: Time -> Symbol
+flicker :: SFML.Time -> Symbol
 flicker t = Symbol '◯' color Nothing where
   one = Colour.yellow
   two = Colour.red
-  blend = abs ( sin ((fromIntegral (asMilliseconds t) ) / 1000) )
+  blend = abs ( sin ((fromIntegral (SFML.asMilliseconds t) ) / 1000) )
   color = Colour.blend blend one two
 
 instance Renderable Tile where

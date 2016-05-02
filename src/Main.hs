@@ -5,7 +5,7 @@ import Control.Category
 import Control.Lens
 
 import qualified Control.Monad.State as S
-import Control.Monad.Random
+import qualified Control.Monad.Random as Random
 import Control.Monad (unless)
 import Data.Map.Strict as Map
 import qualified Data.Aeson as Aeson
@@ -54,7 +54,7 @@ updatePlayer _ = return ()
 
 setup :: (?context :: DisplayContext) => GameM ()
 setup = do
-  S.liftIO (setStdGen $ mkStdGen 1)
+  S.liftIO (Random.setStdGen $ Random.mkStdGen 1)
   playerCoord .= Coord 10 10
   clevel <- mkRandomLevel $ Bounds origin (Coord 20 20)
   currLevel .= clevel
