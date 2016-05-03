@@ -66,7 +66,7 @@ setup :: (?context :: DisplayContext) => GameM ()
 setup = do
   S.liftIO (Random.setStdGen $ Random.mkStdGen 1)
   playerCoord .= Coord 10 10
-  clevel <- mkRandomLevel $ Bounds origin (Coord 40 40)
+  clevel <- mkRandomLevel $ Bounds origin (Coord 100 100)
   currLevel .= clevel
   turnCount .= 0
   gameLoop
