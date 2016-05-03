@@ -1,61 +1,23 @@
 module Entity where
 import Prelude hiding (Either (..), (.), id)
 import Control.Category
-import qualified Control.Monad.State as S
-import Types
-import Control.Lens
-import Data.Map.Strict as Map
+
 import Data.Maybe (fromJust)
-
 import Coord
+import Types
+import Data.Default
 
-lookupEntitybyID :: EntityID -> GameM (Maybe Entity)
-lookupEntitybyID key = use (entityFor key)
+mkWall :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkWall coord = (coord, Just (Wall def))
 
-lookupEntitybyID_ :: EntityID -> GameM (Entity)
-lookupEntitybyID_ key = do
-  e <- lookupEntitybyID key
-  return $ fromJust e
+mkPillar :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkPillar coord = (coord, Just (Pillar def))
 
-updateEntitybyID :: EntityID -> Entity -> GameM ()
-updateEntitybyID eID e = entityFor eID ?= e
+mkTree :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkTree coord = (coord, Just (Tree def))
 
-entityFor eID = allEntities . at eID
+mkFloor :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkFloor coord = (coord, Just (Floor def))
 
-moveEntity :: Direction -> Entity -> Entity
-moveEntity d = position %~ (+) (fromDirection d)
-
-registerEntity :: Entity -> GameM EntityID
-registerEntity entity = do
-  newID <- nextEntityID <+= 1
-  entityFor newID ?= (entityID .~ newID $ entity)
-  return newID
-
-normalObstruction :: EntityBuilder
-normalObstruction = obstruction .~ Just obs where
-  obs = Obstruction {_transparent = False, _flyOver = False}
-
-obstructingTile :: EntityBuilder
-obstructingTile = normalObstruction .
-                  (entityType .~ Tile) .
-                  (damageable .~ Nothing) .
-                  (behavior .~ Nothing)
-
-baseEntity :: Coord -> Symbol -> Entity
-baseEntity pos sym =  (position .~ pos) .
-                      (symbol .~ sym) .
-                      (behavior .~ Nothing) $ Entity {_entityID = -1}
-
-mkBasicRock :: Coord -> GameM EntityID
-mkBasicRock coord = registerEntity $ obstructingTile $ baseEntity coord '#'
-
-mkPlayer :: Coord -> GameM EntityID
-mkPlayer coord = registerEntity $ baseEntity coord '@'
-
-mkLevel :: Bounds -> [EntityID] -> Types.Level
-mkLevel boundary entities = (entityIDs .~ entities) .
-                 (bounds .~ boundary) $ Level {}
-
-addEntityID :: EntityID -> Types.Level -> Types.Level
-addEntityID eID level = entityIDs %~ addE $ level where
-  addE list = eID : list
+mkEmpty :: WorldCoord -> (WorldCoord, Maybe Tile)
+mkEmpty coord = (coord, Just (EmptyTile))

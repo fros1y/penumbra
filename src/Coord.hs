@@ -1,7 +1,8 @@
 module Coord where
 
 import Prelude hiding (Either (..), (.), id)
-import Control.Monad.Random
+import Control.Category
+import qualified Control.Monad.Random as Random
 
 import Types
 
@@ -13,6 +14,9 @@ instance Num Coord where
   signum (Coord x y) = Coord (signum x) (signum y)
   fromInteger i = Coord i' i' where
     i' = fromInteger i
+
+quot :: Coord -> Coord -> Coord
+quot (Coord ax ay) (Coord bx by) = Coord (ax `Prelude.quot` bx) (ay `Prelude.quot` by)
 
 toPair :: Coord -> (Integer, Integer)
 toPair (Coord x y) = (x, y)
@@ -28,11 +32,16 @@ borderCoords :: Bounds -> [Coord]
 borderCoords (Bounds (Coord lx ly) (Coord ux uy)) =
   [Coord x y | x<-[lx..ux], y<-[ly..uy], x == lx || x == ux || y == ly || y == uy]
 
-within :: Coord -> Bounds -> Bool
-within c bounds = c `elem` coordsWithin bounds
+between :: (Ord a) => a -> a -> a -> Bool
+between test lower upper = test >= lower && test < upper
 
-randomWithin :: MonadRandom m => Bounds -> m Coord
-randomWithin b = uniform (coordsWithin b)
+within :: Coord -> Bounds -> Bool
+within (Coord cx cy) (Bounds (Coord lx ly) (Coord ux uy)) = withinX && withinY where
+  withinX = between cx lx ux
+  withinY = between cy ly uy
+
+randomWithin :: Random.MonadRandom m => Bounds -> m Coord
+randomWithin b = Random.uniform (coordsWithin b)
 
 fromDirection :: Direction -> Coord
 fromDirection d = case d of
@@ -43,3 +52,12 @@ fromDirection d = case d of
 
 origin :: Coord
 origin = Coord 0 0
+
+flipOrder :: Coord -> Coord
+flipOrder (Coord x y) = Coord y x
+
+insetBounds :: Integer -> Bounds -> Bounds
+insetBounds i (Bounds l u) = (Bounds l' u') where
+  offset = (Coord i i)
+  l' = l + offset
+  u' = u - offset
