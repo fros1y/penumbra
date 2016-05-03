@@ -121,7 +121,8 @@ data Specifics = Specifics {
 instance Default Specifics where
   def = Specifics Nothing Nothing
 
-data Tile =  Floor Specifics
+data Tile =  EmptyTile
+          |  Floor Specifics
           |  Tree Specifics
           |  Wall Specifics
           |  Pillar Specifics deriving (Show, Read, Eq, Generic)
@@ -140,8 +141,14 @@ flicker t = Symbol '◯' color Nothing where
   blend = abs ( sin ((fromIntegral (SFML.asMilliseconds t) ) / 1000) )
   color = Colour.blend blend one two
 
+instance Monoid Tile where
+  mempty = EmptyTile
+  mappend EmptyTile a = a
+  mappend a EmptyTile = a
+  mappend a _ = a
+
 instance Renderable Tile where
-  getSymbol (Floor _) = Symbol '·' Colour.white Nothing
+  getSymbol (Floor _) = Symbol '·' Colour.dimgray Nothing
   getSymbol (Wall _) = Symbol '#' Colour.white Nothing
   getSymbol (Pillar _) = Symbol '◯' Colour.yellow (Just flicker)
   getSymbol (Tree _) = Symbol '▲' Colour.green Nothing

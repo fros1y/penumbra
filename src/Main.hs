@@ -27,15 +27,25 @@ mkBoringLevel bounds = do
   let rock = mkWall $ Coord 1 1
   return $ mkLevel bounds (Map.fromList [rock]) Map.empty
 
+combineTileMaps :: TileMap -> TileMap -> TileMap
+combineTileMaps a b = Map.unionWith mappend a b
+
+combineListTileMaps :: [TileMap] -> TileMap
+combineListTileMaps ([m]) = m
+combineListTileMaps (m:ms) = Prelude.foldr combineTileMaps m ms
+
 mkRandomLevel :: Bounds -> GameM Types.Level
 mkRandomLevel bounds = do
   let boundary = borderCoords bounds
-  randomPillarLocations <- S.forM [1 .. 5] $ \_i -> randomWithin (insetBounds 2 bounds)
-  randomTreeLocations <- S.forM [1..5] $ \_i -> randomWithin (insetBounds 2 bounds)
-  let rocks = fmap mkWall boundary
-  let trees = fmap mkTree randomTreeLocations
-  let pillars = fmap mkPillar randomPillarLocations
-  return $ mkLevel bounds (Map.fromList $ rocks ++ pillars ++ trees) Map.empty
+  randomPillarLocations <- S.forM [1 .. 10] $ \_i -> randomWithin (insetBounds 2 bounds)
+  randomTreeLocations <- S.forM [1..10] $ \_i -> randomWithin (insetBounds 2 bounds)
+  let empty   =   Map.fromList $ mkEmpty <$> coordsWithin bounds
+      rocks   =   Map.fromList $ mkWall <$> boundary
+      trees   =   Map.fromList $ mkTree <$> randomTreeLocations
+      pillars =   Map.fromList $ mkPillar <$> randomPillarLocations
+      floors  =   Map.fromList $ mkFloor <$> coordsWithin bounds
+      combined =  combineListTileMaps [empty, rocks, trees, pillars, floors]
+  return $ mkLevel bounds combined Map.empty
 
 main :: IO ()
 main = do
@@ -56,7 +66,7 @@ setup :: (?context :: DisplayContext) => GameM ()
 setup = do
   S.liftIO (Random.setStdGen $ Random.mkStdGen 1)
   playerCoord .= Coord 10 10
-  clevel <- mkRandomLevel $ Bounds origin (Coord 20 20)
+  clevel <- mkRandomLevel $ Bounds origin (Coord 40 40)
   currLevel .= clevel
   turnCount .= 0
   gameLoop
@@ -75,7 +85,7 @@ loadState = do
 gameLoop :: (?context :: DisplayContext) => GameM ()
 gameLoop = do
   render
-  command <- S.liftIO $ getPlayerCommand
+  command <- S.liftIO getPlayerCommand
   case command of
     Just Quit -> return ()
     Just Save -> do

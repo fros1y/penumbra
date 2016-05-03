@@ -42,7 +42,7 @@ screenSize = do
   (SFML.Vec2u xsize ysize) <- SFML.getWindowSize (?context ^. wnd)
   return $ Coord (fromIntegral xsize) (fromIntegral ysize)
 
-fontSize = 20
+fontSize = 40
 
 cellSize :: (?context :: DisplayContext) => ScreenCoord
 cellSize = Coord (floor ((fromIntegral fontSize) * 0.75)) (floor ((fromIntegral fontSize) * 0.66))
@@ -86,11 +86,10 @@ renderAt (coord, a) = do
       withinBounds = within coord bounds
       symbol = getSymbol a
       timeBased = (symbol ^. changeOverTime)
-  S.when withinBounds $ do
-    S.when (isNothing timeBased) $ putSymbol coord symbol
-    S.when (isJust timeBased) $ do
-      time <- SFML.getElapsedTime (?context ^. clock)
-      putSymbol coord ( (fromJust timeBased) time)
+  S.when (isNothing timeBased) $ putSymbol coord symbol
+  S.when (isJust timeBased) $ do
+    time <- SFML.getElapsedTime (?context ^. clock)
+    putSymbol coord ( (fromJust timeBased) time)
 
 
 renderCoordMap :: (?context :: DisplayContext, Renderable a) => DisplayContext -> WorldCoord -> CoordMap a -> IO ()
