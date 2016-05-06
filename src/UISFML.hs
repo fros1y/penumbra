@@ -102,22 +102,21 @@ renderCoordMap context playerCoord coordMap = do
 convert (SFML.Vec2u xu yu) = SFML.Vec2f (fromIntegral xu) (fromIntegral yu)
 convertfromCoord (Coord xc yc) = SFML.Vec2f (fromIntegral xc) (fromIntegral yc)
 
-render :: (?context :: DisplayContext) => GameM ()
-render = do
+render :: (?context :: DisplayContext) => World -> GameM ()
+render world = do
   S.liftIO $ SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
-  levelTiles <- use (currLevel . tiles)
-  levelEntities <- use (currLevel . entities)
-  playerE <- use player
-  playerPos <- use playerCoord
-  offsetPlayer <- S.liftIO $ fromWorldToScreen playerPos (playerPos, playerE)
-  view <- S.liftIO $ SFML.getDefaultView (?context ^. wnd)
-  S.liftIO $ do
-    SFML.setViewCenter view (convertfromCoord $ celltoScreen playerPos)
-    SFML.setView (?context ^. wnd) view
-    renderAt offsetPlayer
-    renderCoordMap ?context playerPos levelTiles
-    renderCoordMap ?context playerPos levelEntities
-    SFML.display (?context ^. wnd)
+  let   levelTiles = world ^. (currLevel . tiles)
+        levelEntities = world ^. (currLevel . entities)
+        playerE = world ^. player
+        playerPos = world ^. playerCoord
+  offsetPlayer <- fromWorldToScreen playerPos (playerPos, playerE)
+  view <- SFML.getDefaultView (?context ^. wnd)
+  SFML.setViewCenter view (convertfromCoord $ celltoScreen playerPos)
+  SFML.setView (?context ^. wnd) view
+  renderAt offsetPlayer
+  renderCoordMap ?context playerPos levelTiles
+  renderCoordMap ?context playerPos levelEntities
+  SFML.display (?context ^. wnd)
 
 handleResize :: (?context :: DisplayContext) => Int -> Int -> IO ()
 handleResize w h = do

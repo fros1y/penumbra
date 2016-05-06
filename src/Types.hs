@@ -30,7 +30,7 @@ data DisplayContext = DisplayContext {
 
 data Direction = Up | Down | Left | Right deriving (Show, Read, Eq, Generic)
 
-type GameM = S.StateT World IO
+type GameM = IO
 
 data Coord = Coord {
   _x :: Integer,
