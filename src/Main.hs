@@ -1,8 +1,10 @@
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE Arrows #-}
 
 import Prelude hiding (Either (..), (.), id)
 import Control.Category
 import Control.Lens
+import Control.Applicative
 
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Random as Random
@@ -10,6 +12,7 @@ import Control.Monad (unless)
 import Data.Map.Strict as Map
 import qualified Data.Aeson as Aeson
 import Data.Default
+import qualified Control.Auto as Auto
 
 import Serialize
 import Types
@@ -17,15 +20,15 @@ import UISFML
 import Coord
 import Entity
 
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isNothing)
 
 mkLevel :: Bounds -> TileMap -> EntityMap -> Types.Level
 mkLevel b t e = Level {_tiles=t, _entities=e, _bounds=b}
 
-mkBoringLevel :: Bounds -> GameM Types.Level
-mkBoringLevel bounds = do
+mkBoringLevel :: Bounds -> Types.Level
+mkBoringLevel bounds =
   let rock = mkWall $ Coord 1 1
-  return $ mkLevel bounds (Map.fromList [rock]) Map.empty
+  in mkLevel bounds (Map.fromList [rock]) Map.empty
 
 combineTileMaps :: TileMap -> TileMap -> TileMap
 combineTileMaps a b = Map.unionWith mappend a b
@@ -34,7 +37,7 @@ combineListTileMaps :: [TileMap] -> TileMap
 combineListTileMaps ([m]) = m
 combineListTileMaps (m:ms) = Prelude.foldr combineTileMaps m ms
 
-mkRandomLevel :: Bounds -> GameM Types.Level
+mkRandomLevel :: Bounds -> IO Types.Level
 mkRandomLevel bounds = do
   let boundary = borderCoords bounds
   randomPillarLocations <- S.forM [1 .. 10] $ \_i -> randomWithin (insetBounds 2 bounds)
@@ -50,26 +53,36 @@ mkRandomLevel bounds = do
 main :: IO ()
 main = do
   context' <- initDisplay
-  let ?context = context' in S.runStateT setup def
+  let ?context = context' in setup
   endDisplay context'
 
-update :: Maybe PlayerCommand -> GameM ()
-update Nothing = return ()
-update (Just command) = updatePlayer command
+updatePlayer :: (Monad m) => Auto.Auto m (Maybe PlayerCommand) Coord
+updatePlayer = proc input -> do
+  let delta = case  input of
+                    (Just (Go d))  -> fromDirection d
+                    _       -> fromPair (0, 0)
+  id -< delta
 
-updatePlayer :: PlayerCommand -> GameM ()
-updatePlayer (Go d) = do
-  playerCoord += fromDirection d
-updatePlayer _ = return ()
+defLevel = mkRandomLevel (Bounds origin (Coord 40 40))
 
-setup :: (?context :: DisplayContext) => GameM ()
+game :: (Monad m) => Auto.Auto m (Maybe PlayerCommand) World
+game = proc input -> do
+  turnCount' <- Auto.sumFrom 0 -< if isNothing input then 0 else 1
+  delta <- updatePlayer -< input
+  playerCoord' <- Auto.sumFrom_ (Coord 0 0) -< delta
+  player' <- Auto.pure def -< ()
+  id -< World {
+                _turnCount = turnCount',
+                _player = player',
+                _currLevel = mkBoringLevel (Bounds origin (Coord 40 40)),
+                _playerCoord = playerCoord'
+              }
+
+
+setup :: (?context :: DisplayContext) => IO ()
 setup = do
   S.liftIO (Random.setStdGen $ Random.mkStdGen 1)
-  playerCoord .= Coord 10 10
-  clevel <- mkRandomLevel $ Bounds origin (Coord 100 100)
-  currLevel .= clevel
-  turnCount .= 0
-  gameLoop
+  gameLoop game Nothing
 
 saveState :: World -> IO ()
 saveState w = do
@@ -82,19 +95,10 @@ loadState = do
   fileContents <- readFile filename
   return $ Aeson.decode (read fileContents)
 
-gameLoop :: (?context :: DisplayContext) => GameM ()
-gameLoop = do
-  render
-  command <- S.liftIO getPlayerCommand
-  case command of
-    Just Quit -> return ()
-    Just Save -> do
-      state <- S.get
-      S.liftIO $ saveState state
-      gameLoop
-    Just Load -> do
-      state <- S.liftIO loadState
-      S.put (fromJust state)
-      gameLoop
-    Nothing -> gameLoop
-    _ -> do Main.update command; gameLoop
+gameLoop :: (?context :: DisplayContext) => (Auto.Auto IO (Maybe PlayerCommand) World) -> (Maybe PlayerCommand) -> IO ()
+gameLoop g input = do
+  (worldState, g') <- Auto.stepAuto g input
+  --S.liftIO $ print worldState
+  render worldState
+  input' <- S.liftIO getPlayerCommand
+  gameLoop g' input'

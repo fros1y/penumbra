@@ -25,6 +25,7 @@ executable penumbra
                         aeson,
                         data-default,
                         SFML,
-                        colour
+                        colour,
+                        auto
   hs-source-dirs:       src
   default-language:     Haskell2010

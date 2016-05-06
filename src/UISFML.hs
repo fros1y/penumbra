@@ -102,13 +102,13 @@ renderCoordMap context playerCoord coordMap = do
 convert (SFML.Vec2u xu yu) = SFML.Vec2f (fromIntegral xu) (fromIntegral yu)
 convertfromCoord (Coord xc yc) = SFML.Vec2f (fromIntegral xc) (fromIntegral yc)
 
-render :: (?context :: DisplayContext) => GameM ()
-render = do
+render :: (?context :: DisplayContext) => World -> IO ()
+render worldState = do
   S.liftIO $ SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
-  levelTiles <- use (currLevel . tiles)
-  levelEntities <- use (currLevel . entities)
-  playerE <- use player
-  playerPos <- use playerCoord
+  let levelTiles = worldState ^. (currLevel . tiles)
+      levelEntities = worldState ^. (currLevel . entities)
+      playerE = worldState ^. player
+      playerPos = worldState ^. playerCoord
   offsetPlayer <- S.liftIO $ fromWorldToScreen playerPos (playerPos, playerE)
   view <- S.liftIO $ SFML.getDefaultView (?context ^. wnd)
   S.liftIO $ do

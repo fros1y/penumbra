@@ -8,7 +8,9 @@ import Prelude hiding (Either (..), (.), id)
 import Control.Lens
 import Control.Category
 import qualified Control.Monad.State as S
-import Data.Map.Strict as Map
+import qualified Data.Map.Strict as Map
+import qualified Data.Map.Lazy as LMap
+
 import Data.Maybe (fromJust)
 
 import GHC.Generics
@@ -30,7 +32,7 @@ data DisplayContext = DisplayContext {
 
 data Direction = Up | Down | Left | Right deriving (Show, Read, Eq, Generic)
 
-type GameM = S.StateT World IO
+type GameM = S.StateT GameState IO
 
 data Coord = Coord {
   _x :: Integer,
@@ -73,6 +75,22 @@ data Level = Level {
 instance Default Types.Level where
   def = Level def def def
 
+data GameState = GameState {
+  _world :: World,
+  _runtime :: Runtime
+}
+
+data Runtime = Runtime {
+  lightMap :: Maybe IlluminationMap
+}
+
+instance Default Runtime where
+  def = Runtime Nothing
+
+
+instance Default GameState where
+  def = GameState def def
+
 data World = World {
   _turnCount :: Integer,
   _player :: Entity,
@@ -101,6 +119,9 @@ data PlayerCommand  = Go Direction
 type CoordMap a = Map.Map Coord a
 type TileMap = CoordMap (Maybe Tile)
 type EntityMap = CoordMap (Maybe Entity)
+
+type IlluminationMap = LMap.Map Coord (Maybe Illumination)
+type Illumination = Colour.Colour Double
 
 class Renderable a where
   getSymbol :: a -> Symbol
@@ -159,3 +180,5 @@ makeLenses ''Types.Level
 makeLenses ''Specifics
 makeLenses ''DisplayContext
 makeLenses ''Symbol
+makeLenses ''GameState
+makeLenses ''Runtime
