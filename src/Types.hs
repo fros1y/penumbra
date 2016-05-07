@@ -30,8 +30,6 @@ data DisplayContext = DisplayContext {
 
 data Direction = Up | Down | Left | Right deriving (Show, Read, Eq, Generic)
 
-type GameM = IO
-
 data Coord = Coord {
   _x :: Integer,
   _y :: Integer
@@ -67,6 +65,7 @@ data Entity = Entity {
   _entityAlive :: Bool
 } deriving (Show, Generic)
 
+
 type UpdatedEntity = Entity
 
 type TargetEntityRef = EntityRef
@@ -94,12 +93,13 @@ type TurnCount = Int
 data World = World {
   _entities :: Entities,
   _turnCount :: TurnCount,
-  _pendingActions :: EntityActions
+  _pendingActions :: EntityActions,
+  _nextEntityRef :: EntityRef
 } deriving (Show, Generic)
 type UpdatedWorld = World
 
 instance Default World where
-  def = World (IntMap.singleton 0 (Entity Player def True)) 0 IntMap.empty
+  def = World (IntMap.singleton 0 (Entity Player def True)) 0 IntMap.empty 1
 
 data Symbol = Symbol {
   _glyph :: Char,

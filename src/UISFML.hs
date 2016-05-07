@@ -3,7 +3,7 @@ module UISFML where
 
 import Types
 import Coord
-
+import GameMonad
 import Prelude hiding (Either (..), (.), id)
 import qualified SFML.Graphics as SFML
 import qualified SFML.Window as SFML
@@ -102,15 +102,18 @@ drawEntity :: (?context :: DisplayContext) => Entity -> IO ()
 drawEntity e = renderAt pos e where
   pos = celltoScreen (e ^. entityPos)
 
-render :: (?context :: DisplayContext) => World -> GameM ()
-render world = do
-  SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
-  view <- SFML.getDefaultView (?context ^. wnd)
-  let playerPos = fromJust (world ^. entities ^.at 0) ^. entityPos
-  SFML.setViewCenter view $ convertfromCoord $ celltoScreen playerPos
-  SFML.setView (?context ^. wnd) view
-  mapM_ drawEntity (world ^. entities)
-  SFML.display (?context ^. wnd)
+render :: (?context :: DisplayContext) => GameM ()
+render = do
+  (_, player) <- getPlayer
+  let playerPos = (player ^. entityPos)
+  ents <- use entities
+  S.liftIO $ do
+    SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
+    view <- SFML.getDefaultView (?context ^. wnd)
+    SFML.setViewCenter view $ convertfromCoord $ celltoScreen playerPos
+    SFML.setView (?context ^. wnd) view
+    mapM_ drawEntity ents
+    SFML.display (?context ^. wnd)
 
 handleResize :: (?context :: DisplayContext) => Int -> Int -> IO ()
 handleResize w h = do
