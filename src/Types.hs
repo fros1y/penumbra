@@ -20,7 +20,7 @@ import Data.Colour as Colour
 import Data.Colour.Names as Colour
 
 import Debug.Trace
-
+import Data.IntMap.Strict as IntMap
 
 data DisplayContext = DisplayContext {
   _wnd :: SFML.RenderWindow,
@@ -40,7 +40,6 @@ data Coord = Coord {
 instance Default Coord where
   def = Coord 0 0
 
-
 type WorldCoord = Coord
 type ScreenCoord = Coord
 
@@ -52,37 +51,53 @@ data Bounds = Bounds {
 instance Default Bounds where
   def = Bounds def def
 
-data Entity = GenericEntity |
-              Player Specifics |
-              Rat Specifics deriving (Show, Read, Eq, Generic)
+type EntityRef = Int
+type DeltaCoord = Coord
 
-instance Renderable Entity where
-  getSymbol GenericEntity = def
-  getSymbol (Player _) = Symbol '@' Colour.white Nothing
-  getSymbol (Rat _)    = Symbol 'r' Colour.white Nothing
+data EntityType = Player |
+                  Rat |
+                  Frog |
+                  Wall |
+                  Floor
+                  deriving (Show, Eq, Generic)
 
-instance Default Entity where
-  def = GenericEntity
+data Entity = Entity {
+  _entityType :: EntityType,
+  _entityPos :: Coord,
+  _entityAlive :: Bool
+} deriving (Show, Generic)
 
-data Level = Level {
-  _tiles :: TileMap,
-  _entities :: EntityMap,
-  _bounds :: Bounds
-} deriving (Show, Read, Generic)
+type UpdatedEntity = Entity
 
-instance Default Types.Level where
-  def = Level def def def
+type TargetEntityRef = EntityRef
+type SourceEntityRef = EntityRef
+
+data Action = ActWait |
+              ActMoveBy DeltaCoord |
+              ActAttack TargetEntityRef
+
+data Effect = EffMove Coord |
+              EffMoveBlocked |
+              EffDamage
+
+type Actions = [Action]
+type Effects = [Effect]
+
+type EntityRefMap a = IntMap.IntMap a
+type EntityActions = EntityRefMap Actions
+type EntityEffects = EntityRefMap Effects
+type Entities = EntityRefMap Entity
+
+type TurnCount = Int
 
 data World = World {
-  _turnCount :: Integer,
-  _player :: Entity,
-  _playerCoord :: WorldCoord,
-  _currLevel :: Types.Level
-} deriving (Show, Read, Generic)
+  _entities :: Entities,
+  _turnCount :: TurnCount
+} deriving (Show, Generic)
+type UpdatedWorld = World
 
 instance Default World where
-  def = World 0 player def def where
-    player = Player def
+  def = World (IntMap.singleton 0 (Entity Player def True)) 0
 
 data Symbol = Symbol {
   _glyph :: Char,
@@ -98,64 +113,44 @@ data PlayerCommand  = Go Direction
                     | Load
                     | Quit deriving (Show, Read, Eq, Generic)
 
-type CoordMap a = Map.Map Coord a
-type TileMap = CoordMap (Maybe Tile)
-type EntityMap = CoordMap (Maybe Entity)
+
+makeLenses ''Coord
+makeLenses ''DisplayContext
+makeLenses ''Symbol
+makeLenses ''Entity
+makeLenses ''World
+
 
 class Renderable a where
   getSymbol :: a -> Symbol
-
-class Obstructor a where
-  isObstructing :: a -> Bool
-  isOpaque :: a -> Bool
-
-instance Obstructor Tile where
-  isObstructing _ = True
-  isOpaque _ = True
-
-data Specifics = Specifics {
-  _name :: Maybe String,
-  _healthPoints :: Maybe Int
-} deriving (Show, Read, Eq, Generic)
-
-instance Default Specifics where
-  def = Specifics Nothing Nothing
-
-data Tile =  EmptyTile
-          |  Floor Specifics
-          |  Tree Specifics
-          |  Wall Specifics
-          |  Pillar Specifics deriving (Show, Read, Eq, Generic)
-
-instance Default Tile where
-  def = Floor def
 
 instance (Renderable a) => Renderable (Maybe a) where
   getSymbol (Just a) = getSymbol a
   getSymbol _ = def
 
+instance Renderable Entity where
+  getSymbol entity = getSymbol (entity ^. entityType)
+
+instance Renderable EntityType where
+  getSymbol Player  = Symbol '@' Colour.white Nothing
+  getSymbol Floor   = Symbol '·' Colour.dimgray Nothing
+  getSymbol Rat     = Symbol 'r' Colour.brown Nothing
+  getSymbol Wall    = Symbol '#' Colour.white Nothing 
+  getSymbol _       = Symbol '?' Colour.dimgray Nothing
+
 flicker :: SFML.Time -> Symbol
 flicker t = Symbol '◯' color Nothing where
   one = Colour.yellow
   two = Colour.red
-  blend = abs ( sin ((fromIntegral (SFML.asMilliseconds t) ) / 1000) )
+  blend = abs ( sin (fromIntegral (SFML.asMilliseconds t)  / 1000) )
   color = Colour.blend blend one two
 
-instance Monoid Tile where
-  mempty = EmptyTile
-  mappend EmptyTile a = a
-  mappend a EmptyTile = a
-  mappend a _ = a
+-- instance Renderable Tile where
+--   getSymbol (Floor _) = Symbol '·' Colour.dimgray Nothing
+--   getSymbol (Wall _) = Symbol '#' Colour.white Nothing
+--   getSymbol (Pillar _) = Symbol '◯' Colour.yellow (Just flicker)
+--   getSymbol (Tree _) = Symbol '▲' Colour.green Nothing
 
-instance Renderable Tile where
-  getSymbol (Floor _) = Symbol '·' Colour.dimgray Nothing
-  getSymbol (Wall _) = Symbol '#' Colour.white Nothing
-  getSymbol (Pillar _) = Symbol '◯' Colour.yellow (Just flicker)
-  getSymbol (Tree _) = Symbol '▲' Colour.green Nothing
 
-makeLenses ''World
-makeLenses ''Coord
-makeLenses ''Types.Level
-makeLenses ''Specifics
-makeLenses ''DisplayContext
-makeLenses ''Symbol
+-- makeLenses ''Types.Level
+-- makeLenses ''Specifics

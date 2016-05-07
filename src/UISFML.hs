@@ -56,8 +56,8 @@ screenSizeCells = do
 celltoScreen :: (?context :: DisplayContext) => Coord -> ScreenCoord
 celltoScreen coord = flipOrder $ coord * cellSize
 
-fromWorldToScreen :: (?context :: DisplayContext) => WorldCoord -> (WorldCoord, a) -> IO (ScreenCoord, a)
-fromWorldToScreen playerCoord (worldCoord, a) = return (celltoScreen worldCoord, a)
+fromWorldToScreen :: (?context :: DisplayContext) => WorldCoord -> WorldCoord -> IO (ScreenCoord)
+fromWorldToScreen playerCoord worldCoord = return $ celltoScreen worldCoord
 
 convertColourToSFML :: Colour.Colour Double -> SFML.Color
 convertColourToSFML c = SFML.Color r g b 255 where
@@ -65,7 +65,6 @@ convertColourToSFML c = SFML.Color r g b 255 where
 
 putSymbol :: (?context :: DisplayContext) => Coord -> Symbol -> IO ()
 putSymbol coord symbol = do
-  size <- screenSize
   let c = (symbol ^. baseColor)
       t = (symbol ^. glyph)
       Coord tx ty = coord
@@ -79,43 +78,38 @@ putSymbol coord symbol = do
   SFML.drawText (?context ^. wnd) txt (Just SFML.renderStates)
   SFML.destroy txt
 
-renderAt :: (?context :: DisplayContext, Renderable a) => (ScreenCoord, a) -> IO ()
-renderAt (coord, a) = do
-  size <- screenSize
-  let bounds = Bounds origin size
-      withinBounds = within coord bounds
-      symbol = getSymbol a
+renderAt :: (?context :: DisplayContext, Renderable a) => ScreenCoord -> a -> IO ()
+renderAt coord a = do
+  let symbol = getSymbol a
       timeBased = (symbol ^. changeOverTime)
   S.when (isNothing timeBased) $ putSymbol coord symbol
   S.when (isJust timeBased) $ do
     time <- SFML.getElapsedTime (?context ^. clock)
     putSymbol coord ( (fromJust timeBased) time)
-
-
-renderCoordMap :: (?context :: DisplayContext, Renderable a) => DisplayContext -> WorldCoord -> CoordMap a -> IO ()
-renderCoordMap context playerCoord coordMap = do
-  let list = Map.toList coordMap
-  mapped <- mapM (fromWorldToScreen playerCoord) list
-  mapM_ renderAt mapped
-
+--
+--
+-- renderCoordMap :: (?context :: DisplayContext, Renderable a) => DisplayContext -> WorldCoord -> CoordMap a -> IO ()
+-- renderCoordMap context playerCoord coordMap = do
+--   let list = Map.toList coordMap
+--   mapped <- mapM (fromWorldToScreen playerCoord) list
+--   mapM_ renderAt mapped
+--
 
 convert (SFML.Vec2u xu yu) = SFML.Vec2f (fromIntegral xu) (fromIntegral yu)
 convertfromCoord (Coord xc yc) = SFML.Vec2f (fromIntegral xc) (fromIntegral yc)
 
+drawEntity :: (?context :: DisplayContext) => Entity -> IO ()
+drawEntity e = renderAt pos e where
+  pos = celltoScreen (e ^. entityPos)
+
 render :: (?context :: DisplayContext) => World -> GameM ()
 render world = do
-  S.liftIO $ SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
-  let   levelTiles = world ^. (currLevel . tiles)
-        levelEntities = world ^. (currLevel . entities)
-        playerE = world ^. player
-        playerPos = world ^. playerCoord
-  offsetPlayer <- fromWorldToScreen playerPos (playerPos, playerE)
+  SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
   view <- SFML.getDefaultView (?context ^. wnd)
-  SFML.setViewCenter view (convertfromCoord $ celltoScreen playerPos)
+  let playerPos = fromJust (world ^. entities ^.at 0) ^. entityPos
+  SFML.setViewCenter view $ convertfromCoord $ celltoScreen playerPos
   SFML.setView (?context ^. wnd) view
-  renderAt offsetPlayer
-  renderCoordMap ?context playerPos levelTiles
-  renderCoordMap ?context playerPos levelEntities
+  mapM_ drawEntity (world ^. entities)
   SFML.display (?context ^. wnd)
 
 handleResize :: (?context :: DisplayContext) => Int -> Int -> IO ()
