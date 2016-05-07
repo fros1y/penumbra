@@ -6,95 +6,111 @@ import Control.Lens
 
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Random as Random
-import Control.Monad (unless)
+import Control.Monad (unless, foldM)
 import Data.Map.Strict as Map
 import qualified Data.Aeson as Aeson
 import Data.Default
+import Data.IntMap.Strict as IntMap
 
-import Serialize
+-- import Serialize
 import Types
 import UISFML
 import Coord
-import Entity
+import GameMonad
+-- import Entity
+-- import Level
+-- import State
 
 import Data.Maybe (fromJust)
 
-mkLevel :: Bounds -> TileMap -> EntityMap -> Types.Level
-mkLevel b t e = Level {_tiles=t, _entities=e, _bounds=b}
-
-mkBoringLevel :: Bounds -> GameM Types.Level
-mkBoringLevel bounds = do
-  let rock = mkWall $ Coord 1 1
-  return $ mkLevel bounds (Map.fromList [rock]) Map.empty
-
-combineTileMaps :: TileMap -> TileMap -> TileMap
-combineTileMaps a b = Map.unionWith mappend a b
-
-combineListTileMaps :: [TileMap] -> TileMap
-combineListTileMaps ([m]) = m
-combineListTileMaps (m:ms) = Prelude.foldr combineTileMaps m ms
-
-mkRandomLevel :: Bounds -> GameM Types.Level
-mkRandomLevel bounds = do
-  let boundary = borderCoords bounds
-  randomPillarLocations <- S.forM [1 .. 10] $ \_i -> randomWithin (insetBounds 2 bounds)
-  randomTreeLocations <- S.forM [1..10] $ \_i -> randomWithin (insetBounds 2 bounds)
-  let empty   =   Map.fromList $ mkEmpty <$> coordsWithin bounds
-      rocks   =   Map.fromList $ mkWall <$> boundary
-      trees   =   Map.fromList $ mkTree <$> randomTreeLocations
-      pillars =   Map.fromList $ mkPillar <$> randomPillarLocations
-      floors  =   Map.fromList $ mkFloor <$> coordsWithin bounds
-      combined =  combineListTileMaps [empty, rocks, trees, pillars, floors]
-  return $ mkLevel bounds combined Map.empty
+getUserAction :: (?context :: DisplayContext) => PlayerCommand -> Actions
+getUserAction (Go direction) = [ActMoveBy (fromDirection direction)]
+getUserAction _ = []
 
 main :: IO ()
 main = do
   context' <- initDisplay
-  let ?context = context' in S.runStateT setup def
+  let ?context = context' in (doGame setup def)
   endDisplay context'
 
-update :: Maybe PlayerCommand -> GameM ()
-update Nothing = return ()
-update (Just command) = updatePlayer command
-
-updatePlayer :: PlayerCommand -> GameM ()
-updatePlayer (Go d) = do
-  playerCoord += fromDirection d
-updatePlayer _ = return ()
+mkWall :: Coord -> Entity
+mkWall coord = Entity {_entityType=Wall, _entityPos=coord, _entityAlive = True}
 
 setup :: (?context :: DisplayContext) => GameM ()
 setup = do
-  S.liftIO (Random.setStdGen $ Random.mkStdGen 1)
-  playerCoord .= Coord 10 10
-  clevel <- mkRandomLevel $ Bounds origin (Coord 100 100)
-  currLevel .= clevel
-  turnCount .= 0
+  let player = Entity {_entityType=Player, _entityPos=Coord 0 0, _entityAlive=True}
+  addEntityAt (0, player)
+  addEntities [mkWall (Coord 4 4), mkWall (Coord 2 5)]
   gameLoop
-
-saveState :: World -> IO ()
-saveState w = do
-  let filename = "out.penumbra"
-  writeFile filename $ show $ Aeson.encode w
-
-loadState :: IO (Maybe World)
-loadState = do
-  let filename = "out.penumbra"
-  fileContents <- readFile filename
-  return $ Aeson.decode (read fileContents)
+  return ()
 
 gameLoop :: (?context :: DisplayContext) => GameM ()
 gameLoop = do
   render
   command <- S.liftIO getPlayerCommand
   case command of
-    Just Quit -> return ()
-    Just Save -> do
-      state <- S.get
-      S.liftIO $ saveState state
-      gameLoop
-    Just Load -> do
-      state <- S.liftIO loadState
-      S.put (fromJust state)
-      gameLoop
     Nothing -> gameLoop
-    _ -> do Main.update command; gameLoop
+    Just Quit -> return ()
+    -- Just Save -> do
+    --   gameLoop w' actions
+    -- Just Load -> do
+    --   gameLoop w' actions
+    Just userCommand -> do
+      let userAction = getUserAction userCommand
+      updateWorld userAction
+      gameLoop
+
+updateWorld :: Actions -> GameM ()
+updateWorld actions = do
+  ents <- use entities
+  let moveOrder = id (IntMap.toList ents)
+  mapM_ (updateEntity actions) moveOrder
+
+updateEntity :: Actions -> (EntityRef, Entity) -> GameM ()
+updateEntity actions e@(0, _) = updatePlayer actions e
+updateEntity _ _ = return ()
+
+updatePlayer :: Actions -> (EntityRef, Entity) -> GameM ()
+updatePlayer [] e = return ()
+updatePlayer (ActMoveBy delta:as) e@(ref, ent) = do
+  setEntity ref (ent & entityPos +~ delta)
+  updatePlayer as e
+
+
+--
+-- determineEntityActions :: World -> GameM EntityActions
+-- determineEntityActions w = return IntMap.empty
+--
+-- determineAllEffects :: World -> EntityActions -> GameM EntityEffects
+-- determineAllEffects world@(World {_entities=entities}) entityActions = do
+--   let helper ref entity = determineEffects ref entity (IntMap.findWithDefault [] ref entityActions)
+--   sequence $ IntMap.mapWithKey helper entities
+--
+-- determineEffects :: EntityRef -> Entity -> Actions -> GameM Effects
+-- determineEffects _ entity =  foldM accumulator [] where
+--   accumulator effectsList action = do
+--     newEffects <- determineEffectsPerAction entity action
+--     return (effectsList ++ newEffects)
+--
+-- determineEffectsPerAction :: Entity -> Action -> GameM Effects
+-- determineEffectsPerAction entity (ActMoveBy delta) = return [EffMove coord] where
+--   coord = (entity ^. entityPos) + delta
+-- determineEffectsPerAction entity ActWait = return []
+-- determineEffectsPerAction entity _ = return []
+--
+-- applyAllEffects :: World -> EntityEffects -> (World, EntityActions)
+-- applyAllEffects world@(World {_entities=entities}) entityEffects = (world {_entities = entities'}, actions)
+--   where
+--       noEffects = IntMap.map $ \e -> (e, [])
+--       processEffects = IntMap.mergeWithKey applyEffects noEffects (const IntMap.empty)
+--       entitiesAndActions = processEffects entities entityEffects
+--       entities' = IntMap.map fst entitiesAndActions
+--       actions = IntMap.map snd entitiesAndActions
+--
+-- applyEffects :: EntityRef -> Entity -> Effects -> Maybe (Entity, Actions)
+-- applyEffects _ entity effects = Just (Prelude.foldr applyEffect (entity, []) effects)
+--
+-- applyEffect :: Effect -> (Entity, Actions) -> (Entity, Actions)
+-- applyEffect (EffMove coord) (entity, actions) = (entity', []) where
+--   entity' = entity {_entityPos = coord}
+-- applyEffect _ (entity, actions) = (entity, [])
