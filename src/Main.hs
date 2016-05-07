@@ -66,7 +66,7 @@ gameLoop w actions = do
     Nothing -> gameLoop w actions
     Just Quit -> return ()
     Just Save -> do
-      -- state <- S.get
+      let worldSave = w & pendingActions .~ actions
       -- S.liftIO $ saveState state
       gameLoop w actions
     Just Load -> do
@@ -79,17 +79,17 @@ gameLoop w actions = do
       gameLoop w' actions'
 
 updateWorld :: World -> EntityActions -> GameM (UpdatedWorld, EntityActions)
-updateWorld world@(World entities turnCount) actions = do
+updateWorld world@(World {_entities=entities}) actions = do
   newActions <- determineEntityActions world
   effects <- determineAllEffects world (collectActions actions newActions)
   let (world', resultingActions) = applyAllEffects world effects
   return (world', resultingActions)
 
 determineEntityActions :: World -> GameM EntityActions
-determineEntityActions world@(World entities turnCount) = return IntMap.empty
+determineEntityActions w = return IntMap.empty
 
 determineAllEffects :: World -> EntityActions -> GameM EntityEffects
-determineAllEffects world@(World entities turnCount) entityActions = do
+determineAllEffects world@(World {_entities=entities}) entityActions = do
   let helper ref entity = determineEffects ref entity (IntMap.findWithDefault [] ref entityActions)
   sequence $ IntMap.mapWithKey helper entities
 
@@ -106,7 +106,7 @@ determineEffectsPerAction entity ActWait = return []
 determineEffectsPerAction entity _ = return []
 
 applyAllEffects :: World -> EntityEffects -> (World, EntityActions)
-applyAllEffects world@(World entities turnCount) entityEffects = (World entities' turnCount, actions)
+applyAllEffects world@(World {_entities=entities}) entityEffects = (world {_entities = entities'}, actions)
   where
       noEffects = IntMap.map $ \e -> (e, [])
       processEffects = IntMap.mergeWithKey applyEffects noEffects (const IntMap.empty)
@@ -119,5 +119,5 @@ applyEffects _ entity effects = Just (Prelude.foldr applyEffect (entity, []) eff
 
 applyEffect :: Effect -> (Entity, Actions) -> (Entity, Actions)
 applyEffect (EffMove coord) (entity, actions) = (entity', []) where
-  entity' = entity {_entityPos = coord} --FIXME
+  entity' = entity {_entityPos = coord} 
 applyEffect _ (entity, actions) = (entity, [])

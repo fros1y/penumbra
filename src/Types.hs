@@ -75,10 +75,11 @@ type SourceEntityRef = EntityRef
 data Action = ActWait |
               ActMoveBy DeltaCoord |
               ActAttack TargetEntityRef
+              deriving (Show, Generic, Eq)
 
 data Effect = EffMove Coord |
               EffMoveBlocked |
-              EffDamage
+              EffDamage deriving (Show, Generic, Eq)
 
 type Actions = [Action]
 type Effects = [Effect]
@@ -92,12 +93,13 @@ type TurnCount = Int
 
 data World = World {
   _entities :: Entities,
-  _turnCount :: TurnCount
+  _turnCount :: TurnCount,
+  _pendingActions :: EntityActions
 } deriving (Show, Generic)
 type UpdatedWorld = World
 
 instance Default World where
-  def = World (IntMap.singleton 0 (Entity Player def True)) 0
+  def = World (IntMap.singleton 0 (Entity Player def True)) 0 IntMap.empty
 
 data Symbol = Symbol {
   _glyph :: Char,
@@ -135,7 +137,7 @@ instance Renderable EntityType where
   getSymbol Player  = Symbol '@' Colour.white Nothing
   getSymbol Floor   = Symbol '·' Colour.dimgray Nothing
   getSymbol Rat     = Symbol 'r' Colour.brown Nothing
-  getSymbol Wall    = Symbol '#' Colour.white Nothing 
+  getSymbol Wall    = Symbol '#' Colour.white Nothing
   getSymbol _       = Symbol '?' Colour.dimgray Nothing
 
 flicker :: SFML.Time -> Symbol
