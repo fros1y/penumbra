@@ -1,47 +1,76 @@
 {-# LANGUAGE ImplicitParams #-}
 module Level where
 
-import Prelude hiding (Either (..), (.), id)
-import Control.Category
-import Control.Lens
+import           Control.Category
+import           Control.Lens
+import           Prelude              hiding (Either (..), id, (.))
 
-import qualified Control.Monad.State as S
+import           Control.Monad        (unless)
 import qualified Control.Monad.Random as Random
-import Control.Monad (unless)
-import Data.Map.Strict as Map
-import qualified Data.Aeson as Aeson
-import Data.Default
+import qualified Control.Monad.State  as S
+import qualified Data.Aeson           as Aeson
+import           Data.Default
+import           Data.Map.Strict      as Map
 
-import Serialize
-import Types
-import UISFML
-import Coord
-import Entity
+import           Coord
+import           Entity
+import           GameMonad
+import           Serialize
+import           Types
+import           UISFML
 
-mkLevel :: Bounds -> TileMap -> EntityMap -> Types.Level
-mkLevel b t e = Level {_tiles=t, _entities=e, _bounds=b}
 
-mkBoringLevel :: Bounds -> GameM Types.Level
-mkBoringLevel bounds = do
-  let rock = mkWall $ Coord 1 1
-  return $ mkLevel bounds (Map.fromList [rock]) Map.empty
+(<>) :: Monoid m => m -> m -> m
+(<>) = mappend
 
-combineTileMaps :: TileMap -> TileMap -> TileMap
-combineTileMaps a b = Map.unionWith mappend a b
+instance Monoid EntityType where
+  mempty = Floor
+  mappend x Floor = x
+  mappend Floor x = x
+  mappend x y = x
 
-combineListTileMaps :: [TileMap] -> TileMap
-combineListTileMaps ([m]) = m
-combineListTileMaps (m:ms) = Prelude.foldr combineTileMaps m ms
+newtype LevelBuilder = LevelBuilder { asMap :: CoordMap EntityType } deriving Show
 
-mkRandomLevel :: Bounds -> GameM Types.Level
+instance Monoid LevelBuilder where
+  mempty = LevelBuilder Map.empty
+  mappend x y = LevelBuilder $ Map.unionWith (<>) (asMap x) (asMap y)
+  mconcat list = LevelBuilder $ Map.unionsWith (<>) (Prelude.map asMap list)
+
+setTile :: (Coord, EntityType) -> LevelBuilder -> LevelBuilder
+setTile (coord, tileType) (LevelBuilder builder) = LevelBuilder $ Map.insert coord tileType builder
+
+getTile :: Coord -> LevelBuilder -> Maybe EntityType
+getTile coord (LevelBuilder builder) = Map.lookup coord builder
+
+mkTiles :: EntityType -> [Coord] -> LevelBuilder
+mkTiles tileType = Prelude.foldr set mempty where
+  set coord = setTile (coord, tileType)
+
+fromLevelBuilder :: LevelBuilder -> [Entity]
+fromLevelBuilder (LevelBuilder builder) = Prelude.map fromEntityType (toList builder)
+
+fromEntityType :: (Coord, EntityType) -> Entity
+fromEntityType (coord, tileType) = Entity {_entityType=tileType, _entityPos=coord, _entityAlive = True}
+
+mkFloors :: Bounds -> LevelBuilder
+mkFloors bounds = mkTiles Floor $ coordsWithin bounds
+
+mkBounds :: Bounds -> LevelBuilder
+mkBounds bounds = mkTiles Wall $ borderCoords bounds
+
+conflict :: LevelBuilder -> LevelBuilder -> Bool
+conflict (LevelBuilder builder1) (LevelBuilder builder2) = (Map.size intersect) /= 0 where
+  intersect = Map.intersection builder1 builder2
+
+mkBoringLevel :: Bounds -> [Entity]
+mkBoringLevel bounds = fromLevelBuilder $ boundary <> flooring where
+  boundary = mkBounds bounds
+  flooring = mkFloors bounds
+
+mkRandomLevel :: Bounds -> GameM [Entity]
 mkRandomLevel bounds = do
-  let boundary = borderCoords bounds
-  randomPillarLocations <- S.forM [1 .. 10] $ \_i -> randomWithin (insetBounds 2 bounds)
-  randomTreeLocations <- S.forM [1..10] $ \_i -> randomWithin (insetBounds 2 bounds)
-  let empty   =   Map.fromList $ mkEmpty <$> coordsWithin bounds
-      rocks   =   Map.fromList $ mkWall <$> boundary
-      trees   =   Map.fromList $ mkTree <$> randomTreeLocations
-      pillars =   Map.fromList $ mkPillar <$> randomPillarLocations
-      floors  =   Map.fromList $ mkFloor <$> coordsWithin bounds
-      combined =  combineListTileMaps [empty, rocks, trees, pillars, floors]
-  return $ mkLevel bounds combined Map.empty
+  randomPillarLocations <- S.liftIO $ S.forM [1 .. 30] $ \_i -> randomWithin (insetBounds 2 bounds)
+  let boundary = mkBounds bounds
+      flooring = mkFloors bounds
+      pillars = mkTiles Wall randomPillarLocations
+  return $ fromLevelBuilder $ boundary <> pillars <> flooring

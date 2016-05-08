@@ -23,6 +23,8 @@ import qualified SFML.Window         as SFML
 import           Data.IntMap.Strict  as IntMap
 import           Debug.Trace
 
+type CoordMap a = Map.Map Coord a
+
 data DisplayContext = DisplayContext {
   _wnd   :: SFML.RenderWindow,
   _fnt   :: SFML.Font,

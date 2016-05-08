@@ -18,7 +18,7 @@ import           GameMonad
 import           Types
 import           UISFML
 -- import Entity
--- import Level
+import           Level
 import           Serialize
 import           State
 
@@ -34,14 +34,12 @@ main = do
   let ?context = context' in (doGame setup def)
   endDisplay context'
 
-mkWall :: Coord -> Entity
-mkWall coord = Entity {_entityType=Wall, _entityPos=coord, _entityAlive = True}
-
 setup :: (?context :: DisplayContext) => GameM ()
 setup = do
-  let player = Entity {_entityType=Player, _entityPos=Coord 0 0, _entityAlive=True}
+  let player = Entity {_entityType=Player, _entityPos=Coord 20 20, _entityAlive=True}
   addEntityAt (0, player)
-  addEntities [mkWall (Coord 4 4), mkWall (Coord 2 5)]
+  level <- mkRandomLevel (Bounds origin (Coord 40 40))
+  addEntities level
   gameLoop
   return ()
 
