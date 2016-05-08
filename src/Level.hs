@@ -3,20 +3,18 @@ module Level where
 
 import           Control.Category
 import           Control.Lens
-import           Prelude              hiding (Either (..), id, (.))
-
 import           Control.Monad        (unless)
 import qualified Control.Monad.Random as Random
 import qualified Control.Monad.State  as S
 import qualified Data.Aeson           as Aeson
 import           Data.Default
 import           Data.Map.Strict      as Map
+import           Prelude              hiding (Either (..), id, (.))
 
 import           Coord
 import           Entity
 import           GameMonad
 import           Serialize
-import           Types
 import           UISFML
 
 

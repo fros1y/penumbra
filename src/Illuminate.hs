@@ -1,18 +1,18 @@
 -- type IlluminationMap = LMap.Map Coord (Maybe Illumination)
 
 module Illuminate where
-import Data.Colour as Colour
-import Data.Colour.Names as Colour
-import Prelude hiding (Either (..), (.), id)
-import Control.Lens
-import Control.Category
+import           Control.Category
+import           Control.Lens
 import qualified Control.Monad.State as S
-import qualified Data.Map.Strict as Map
-import qualified Data.Map.Lazy as LMap
+import           Data.Colour         as Colour
+import           Data.Colour.Names   as Colour
+import qualified Data.Map.Lazy       as LMap
+import qualified Data.Map.Strict     as Map
+import           Data.Maybe          (fromJust)
+import           Prelude             hiding (Either (..), id, (.))
 
-import Data.Maybe (fromJust)
-import Types
-import Coord
+import           Coord
+
 
 
 type Intensity = Double

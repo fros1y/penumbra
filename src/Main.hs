@@ -11,18 +11,20 @@ import qualified Data.Aeson           as Aeson
 import           Data.Default
 import           Data.IntMap.Strict   as IntMap
 import           Data.Map.Strict      as Map
+import           Data.Maybe           (fromJust)
 import           Debug.Trace
 
+import           Actions
 import           Coord
+import           Entity
 import           GameMonad
-import           Types
-import           UISFML
--- import Entity
 import           Level
+import           Obstruction
+import           PlayerCommand
 import           Serialize
 import           State
-
-import           Data.Maybe           (fromJust)
+import           UISFML
+import           World
 
 getUserAction :: (?context :: DisplayContext) => PlayerCommand -> Actions
 getUserAction (Go direction) = [ActMoveBy (fromDirection direction)]

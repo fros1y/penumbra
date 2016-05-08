@@ -8,7 +8,17 @@ import           Data.Default
 import           Data.IntMap.Strict   as IntMap
 import           Data.Maybe           (fromJust)
 import           Prelude              hiding (Either (..), id, (.))
-import           Types
+
+import           Entity
+import           World
+
+newtype GameM a = GameM {
+  runGame :: (State.StateT World IO) a
+} deriving (Functor, Applicative, Monad, State.MonadState World, State.MonadIO)
+
+doGame :: GameM a -> World -> IO (a, World)
+doGame game = State.runStateT (runGame game)
+
 class (Monad m) => GameFunctions m where
   getWorld :: m World
   setWorld :: World -> m ()
@@ -26,19 +36,6 @@ class (Monad m) => GameFunctions m where
   getPlayer :: m (EntityRef, Entity)
   setEntity :: EntityRef -> Entity -> m ()
   getEntity :: EntityRef -> m (Maybe Entity)
-
--- instance Random.MonadRandom GameM  where
---     getRandom = Random.getRandom
---     getRandomR = Random.getRandomR
---     getRandoms = Random.getRandoms
---     getRandomRs = Random.getRandomRs
-
-newtype GameM a = GameM {
-  runGame :: (State.StateT World IO) a
-} deriving (Functor, Applicative, Monad, State.MonadState World, State.MonadIO)
-
-doGame :: GameM a -> World -> IO (a, World)
-doGame game = State.runStateT (runGame game)
 
 instance GameFunctions GameM where
   getWorld = State.get

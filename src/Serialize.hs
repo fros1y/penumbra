@@ -2,12 +2,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Serialize where
+
 import           Data.Aeson
 import           Data.Map.Strict as Map
 import           GHC.Generics
 
+import           Actions
 import           Coord
-import           Types
+import           Direction
+import           Entity
+import           PlayerCommand
+import           World
 
 instance ToJSON Direction
 instance FromJSON Direction

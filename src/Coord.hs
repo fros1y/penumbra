@@ -1,10 +1,37 @@
-module Coord where
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE TemplateHaskell #-}
 
+module Coord where
 import           Control.Category
+import           Control.Lens
 import qualified Control.Monad.Random as Random
+import           Data.Default
+import           Data.Map.Strict      as Map
+import           Direction
+import           GHC.Generics
 import           Prelude              hiding (Either (..), id, (.))
 
-import           Types
+data Coord = Coord {
+  _x :: Integer,
+  _y :: Integer
+  } deriving (Eq, Show, Read, Ord, Generic)
+makeLenses ''Coord
+
+data Bounds = Bounds {
+  upper :: Coord,
+  lower :: Coord
+} deriving (Eq, Show, Read, Ord, Generic)
+
+instance Default Bounds where
+  def = Bounds def def
+
+instance Default Coord where
+  def = Coord 0 0
+
+type WorldCoord = Coord
+type ScreenCoord = Coord
+type DeltaCoord = Coord
+type CoordMap a = Map.Map Coord a
 
 instance Num Coord where
   (+) (Coord x y) (Coord x' y') = Coord (x+x') (y+y')
