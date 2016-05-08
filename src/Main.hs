@@ -11,15 +11,16 @@ import qualified Data.Aeson           as Aeson
 import           Data.Default
 import           Data.IntMap.Strict   as IntMap
 import           Data.Map.Strict      as Map
-import Debug.Trace
--- import Serialize
+import           Debug.Trace
+
 import           Coord
 import           GameMonad
 import           Types
 import           UISFML
 -- import Entity
 -- import Level
--- import State
+import State
+import Serialize
 
 import           Data.Maybe           (fromJust)
 
@@ -51,10 +52,14 @@ gameLoop = do
   case command of
     Nothing -> gameLoop
     Just Quit -> return ()
-    -- Just Save -> do
-    --   gameLoop w' actions
-    -- Just Load -> do
-    --   gameLoop w' actions
+    Just Save -> do
+      saveWorld <- getWorld
+      S.liftIO $ saveState saveWorld
+      gameLoop
+    Just Load -> do
+      loadWorld <- S.liftIO $ loadState
+      setWorld (fromJust loadWorld)
+      gameLoop
     Just userCommand -> do
       let userAction = getUserAction userCommand
       updateWorld userAction
@@ -96,41 +101,3 @@ updatePlayer (ActMoveBy delta:as) e = do
   moveCheckingForCollision delta e
   updatePlayer as e
 updatePlayer [] e = return ()
-
---
--- determineEntityActions :: World -> GameM EntityActions
--- determineEntityActions w = return IntMap.empty
---
--- determineAllEffects :: World -> EntityActions -> GameM EntityEffects
--- determineAllEffects world@(World {_entities=entities}) entityActions = do
---   let helper ref entity = determineEffects ref entity (IntMap.findWithDefault [] ref entityActions)
---   sequence $ IntMap.mapWithKey helper entities
---
--- determineEffects :: EntityRef -> Entity -> Actions -> GameM Effects
--- determineEffects _ entity =  foldM accumulator [] where
---   accumulator effectsList action = do
---     newEffects <- determineEffectsPerAction entity action
---     return (effectsList ++ newEffects)
---
--- determineEffectsPerAction :: Entity -> Action -> GameM Effects
--- determineEffectsPerAction entity (ActMoveBy delta) = return [EffMove coord] where
---   coord = (entity ^. entityPos) + delta
--- determineEffectsPerAction entity ActWait = return []
--- determineEffectsPerAction entity _ = return []
---
--- applyAllEffects :: World -> EntityEffects -> (World, EntityActions)
--- applyAllEffects world@(World {_entities=entities}) entityEffects = (world {_entities = entities'}, actions)
---   where
---       noEffects = IntMap.map $ \e -> (e, [])
---       processEffects = IntMap.mergeWithKey applyEffects noEffects (const IntMap.empty)
---       entitiesAndActions = processEffects entities entityEffects
---       entities' = IntMap.map fst entitiesAndActions
---       actions = IntMap.map snd entitiesAndActions
---
--- applyEffects :: EntityRef -> Entity -> Effects -> Maybe (Entity, Actions)
--- applyEffects _ entity effects = Just (Prelude.foldr applyEffect (entity, []) effects)
---
--- applyEffect :: Effect -> (Entity, Actions) -> (Entity, Actions)
--- applyEffect (EffMove coord) (entity, actions) = (entity', []) where
---   entity' = entity {_entityPos = coord}
--- applyEffect _ (entity, actions) = (entity, [])

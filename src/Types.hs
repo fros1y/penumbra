@@ -121,7 +121,7 @@ class Obstruction a where
 
 instance Obstruction Entity where
   obstructs entity = obstructs (entity ^. entityType)
-  
+
 instance Obstruction EntityType where
   obstructs Floor = False
   obstructs _ = True
@@ -149,13 +149,3 @@ flicker t = Symbol '◯' color Nothing where
   two = Colour.red
   blend = abs ( sin (fromIntegral (SFML.asMilliseconds t)  / 1000) )
   color = Colour.blend blend one two
-
--- instance Renderable Tile where
---   getSymbol (Floor _) = Symbol '·' Colour.dimgray Nothing
---   getSymbol (Wall _) = Symbol '#' Colour.white Nothing
---   getSymbol (Pillar _) = Symbol '◯' Colour.yellow (Just flicker)
---   getSymbol (Tree _) = Symbol '▲' Colour.green Nothing
-
-
--- makeLenses ''Types.Level
--- makeLenses ''Specifics

@@ -16,8 +16,8 @@ import Serialize
 import Types
 import UISFML
 import Coord
-import Entity
-import Level
+-- import Entity
+-- import Level
 
 saveState :: World -> IO ()
 saveState w = do
