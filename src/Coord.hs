@@ -1,10 +1,10 @@
 module Coord where
 
-import Prelude hiding (Either (..), (.), id)
-import Control.Category
+import           Control.Category
 import qualified Control.Monad.Random as Random
+import           Prelude              hiding (Either (..), id, (.))
 
-import Types
+import           Types
 
 instance Num Coord where
   (+) (Coord x y) (Coord x' y') = Coord (x+x') (y+y')

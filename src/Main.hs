@@ -19,8 +19,8 @@ import           Types
 import           UISFML
 -- import Entity
 -- import Level
-import State
-import Serialize
+import           Serialize
+import           State
 
 import           Data.Maybe           (fromJust)
 

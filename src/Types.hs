@@ -1,30 +1,31 @@
-{-# LANGUAGE TemplateHaskell, TypeOperators #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Types where
-import Prelude hiding (Either (..), (.), id)
+import           Prelude             hiding (Either (..), id, (.))
 
-import Control.Lens
-import Control.Category
+import           Control.Category
+import           Control.Lens
 import qualified Control.Monad.State as S
-import Data.Map.Strict as Map
-import Data.Maybe (fromJust)
+import           Data.Map.Strict     as Map
+import           Data.Maybe          (fromJust)
 
-import GHC.Generics
-import Data.Default
+import           Data.Default
+import           GHC.Generics
 
-import qualified SFML.Graphics as SFML
-import qualified SFML.Window as SFML
-import Data.Colour as Colour
-import Data.Colour.Names as Colour
+import           Data.Colour         as Colour
+import           Data.Colour.Names   as Colour
+import qualified SFML.Graphics       as SFML
+import qualified SFML.Window         as SFML
 
-import Debug.Trace
-import Data.IntMap.Strict as IntMap
+import           Data.IntMap.Strict  as IntMap
+import           Debug.Trace
 
 data DisplayContext = DisplayContext {
-  _wnd :: SFML.RenderWindow,
-  _fnt :: SFML.Font,
+  _wnd   :: SFML.RenderWindow,
+  _fnt   :: SFML.Font,
   _clock :: SFML.Clock
 }
 
@@ -60,8 +61,8 @@ data EntityType = Player |
                   deriving (Show, Eq, Generic)
 
 data Entity = Entity {
-  _entityType :: EntityType,
-  _entityPos :: Coord,
+  _entityType  :: EntityType,
+  _entityPos   :: Coord,
   _entityAlive :: Bool
 } deriving (Show, Generic)
 
@@ -85,10 +86,10 @@ type Entities = EntityRefMap Entity
 type TurnCount = Int
 
 data World = World {
-  _entities :: Entities,
-  _turnCount :: TurnCount,
+  _entities       :: Entities,
+  _turnCount      :: TurnCount,
   _pendingActions :: EntityActions,
-  _nextEntityRef :: EntityRef
+  _nextEntityRef  :: EntityRef
 } deriving (Show, Generic)
 type UpdatedWorld = World
 
@@ -96,8 +97,8 @@ instance Default World where
   def = World (IntMap.singleton 0 (Entity Player def True)) 0 IntMap.empty 1
 
 data Symbol = Symbol {
-  _glyph :: Char,
-  _baseColor :: Colour.Colour Double,
+  _glyph          :: Char,
+  _baseColor      :: Colour.Colour Double,
   _changeOverTime :: Maybe (SFML.Time -> Symbol)
 } deriving (Generic)
 

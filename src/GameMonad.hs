@@ -1,13 +1,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module GameMonad where
+import           Control.Category
+import           Control.Lens
 import qualified Control.Monad.State as State
-import Prelude hiding (Either (..), (.), id)
-import Control.Category
-import Control.Lens
-import Data.IntMap.Strict as IntMap
-import Data.Maybe (fromJust)
-import Types
-import Data.Default
+import           Data.Default
+import           Data.IntMap.Strict  as IntMap
+import           Data.Maybe          (fromJust)
+import           Prelude             hiding (Either (..), id, (.))
+import           Types
 
 class (Monad m) => GameFunctions m where
   getWorld :: m World

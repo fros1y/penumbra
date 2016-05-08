@@ -1,12 +1,13 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Serialize where
-import Data.Aeson
-import GHC.Generics
-import Data.Map.Strict as Map
+import           Data.Aeson
+import           Data.Map.Strict as Map
+import           GHC.Generics
 
-import Coord
-import Types
+import           Coord
+import           Types
 
 instance ToJSON Direction
 instance FromJSON Direction

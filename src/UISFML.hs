@@ -1,23 +1,23 @@
 {-# LANGUAGE ImplicitParams #-}
 module UISFML where
 
-import Types
-import Coord
-import GameMonad
-import Prelude hiding (Either (..), (.), id)
-import qualified SFML.Graphics as SFML
-import qualified SFML.Window as SFML
-import Control.Category
-import Control.Lens
+import           Control.Category
+import           Control.Lens
 import qualified Control.Monad.State as S
+import           Coord
+import           GameMonad
+import           Prelude             hiding (Either (..), id, (.))
+import qualified SFML.Graphics       as SFML
+import qualified SFML.Window         as SFML
+import           Types
 
-import Debug.Trace
-import Data.Map.Strict as Map
+import           Data.Map.Strict     as Map
+import           Debug.Trace
 
-import Data.Maybe (isJust, fromJust, isNothing)
-import Data.Colour as Colour
-import Data.Colour.Names as Colour
-import Data.Colour.SRGB as Colour
+import           Data.Colour         as Colour
+import           Data.Colour.Names   as Colour
+import           Data.Colour.SRGB    as Colour
+import           Data.Maybe          (fromJust, isJust, isNothing)
 
 tracePipe msg value = trace (msg ++ show value) value
 

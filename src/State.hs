@@ -1,21 +1,21 @@
 module State where
 
 
-import Prelude hiding (Either (..), (.), id)
-import Control.Category
-import Control.Lens
+import           Control.Category
+import           Control.Lens
+import           Prelude              hiding (Either (..), id, (.))
 
-import qualified Control.Monad.State as S
+import           Control.Monad        (unless)
 import qualified Control.Monad.Random as Random
-import Control.Monad (unless)
-import Data.Map.Strict as Map
-import qualified Data.Aeson as Aeson
-import Data.Default
+import qualified Control.Monad.State  as S
+import qualified Data.Aeson           as Aeson
+import           Data.Default
+import           Data.Map.Strict      as Map
 
-import Serialize
-import Types
-import UISFML
-import Coord
+import           Coord
+import           Serialize
+import           Types
+import           UISFML
 -- import Entity
 -- import Level
 
