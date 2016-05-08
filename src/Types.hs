@@ -76,16 +76,10 @@ data Action = ActWait |
               ActAttack TargetEntityRef
               deriving (Show, Generic, Eq)
 
-data Effect = EffMove Coord |
-              EffMoveBlocked |
-              EffDamage deriving (Show, Generic, Eq)
-
 type Actions = [Action]
-type Effects = [Effect]
 
 type EntityRefMap a = IntMap.IntMap a
 type EntityActions = EntityRefMap Actions
-type EntityEffects = EntityRefMap Effects
 type Entities = EntityRefMap Entity
 
 type TurnCount = Int
@@ -122,6 +116,15 @@ makeLenses ''Symbol
 makeLenses ''Entity
 makeLenses ''World
 
+class Obstruction a where
+  obstructs :: a -> Bool
+
+instance Obstruction Entity where
+  obstructs entity = obstructs (entity ^. entityType)
+  
+instance Obstruction EntityType where
+  obstructs Floor = False
+  obstructs _ = True
 
 class Renderable a where
   getSymbol :: a -> Symbol

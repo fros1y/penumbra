@@ -1,27 +1,27 @@
 {-# LANGUAGE ImplicitParams #-}
 
-import Prelude hiding (Either (..), (.), id)
-import Control.Category
-import Control.Lens
+import           Control.Category
+import           Control.Lens
+import           Prelude              hiding (Either (..), id, (.))
 
-import qualified Control.Monad.State as S
+import           Control.Monad        (foldM, unless)
 import qualified Control.Monad.Random as Random
-import Control.Monad (unless, foldM)
-import Data.Map.Strict as Map
-import qualified Data.Aeson as Aeson
-import Data.Default
-import Data.IntMap.Strict as IntMap
-
+import qualified Control.Monad.State  as S
+import qualified Data.Aeson           as Aeson
+import           Data.Default
+import           Data.IntMap.Strict   as IntMap
+import           Data.Map.Strict      as Map
+import Debug.Trace
 -- import Serialize
-import Types
-import UISFML
-import Coord
-import GameMonad
+import           Coord
+import           GameMonad
+import           Types
+import           UISFML
 -- import Entity
 -- import Level
 -- import State
 
-import Data.Maybe (fromJust)
+import           Data.Maybe           (fromJust)
 
 getUserAction :: (?context :: DisplayContext) => PlayerCommand -> Actions
 getUserAction (Go direction) = [ActMoveBy (fromDirection direction)]
@@ -70,12 +70,32 @@ updateEntity :: Actions -> (EntityRef, Entity) -> GameM ()
 updateEntity actions e@(0, _) = updatePlayer actions e
 updateEntity _ _ = return ()
 
-updatePlayer :: Actions -> (EntityRef, Entity) -> GameM ()
-updatePlayer [] e = return ()
-updatePlayer (ActMoveBy delta:as) e@(ref, ent) = do
-  setEntity ref (ent & entityPos +~ delta)
-  updatePlayer as e
+entitiesAtCoord :: Coord -> GameM [Entity]
+entitiesAtCoord coord = do
+  ents <- use entities
+  let atCoord entity = (entity ^. entityPos) == coord
+      ents' = IntMap.filter atCoord ents
+  return $ Prelude.map snd (IntMap.toList ents')
 
+checkCollision :: Coord -> GameM Bool
+checkCollision coord = do
+  entsAtCoord <- entitiesAtCoord coord
+  let ents = Prelude.filter obstructs entsAtCoord
+      foo = traceShow (length ents) ()
+  return $ (length ents) > 0
+
+moveCheckingForCollision :: DeltaCoord -> (EntityRef, Entity) -> GameM Bool
+moveCheckingForCollision delta (ref, ent) = do
+  let target = (ent ^. entityPos) + delta
+  collision <- checkCollision target
+  S.unless collision $ setEntity ref (ent & entityPos .~ target)
+  return (not collision)
+
+updatePlayer :: Actions -> (EntityRef, Entity) -> GameM ()
+updatePlayer (ActMoveBy delta:as) e = do
+  moveCheckingForCollision delta e
+  updatePlayer as e
+updatePlayer [] e = return ()
 
 --
 -- determineEntityActions :: World -> GameM EntityActions
