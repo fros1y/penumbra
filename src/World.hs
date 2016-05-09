@@ -25,4 +25,4 @@ makeLenses ''World
 type UpdatedWorld = World
 
 instance Default World where
-  def = World (IntMap.singleton 0 (Entity Player def True)) 0 IntMap.empty 1
+  def = World (IntMap.singleton 0 (Entity Player def True Nothing)) 0 IntMap.empty 1

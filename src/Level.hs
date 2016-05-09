@@ -67,7 +67,7 @@ mkBoringLevel bounds = fromLevelBuilder $ boundary <> flooring where
 
 mkRandomLevel :: Bounds -> GameM [Entity]
 mkRandomLevel bounds = do
-  randomPillarLocations <- S.liftIO $ S.forM [1 .. 30] $ \_i -> randomWithin (insetBounds 2 bounds)
+  randomPillarLocations <- S.liftIO $ S.forM [1 .. 50] $ \_i -> randomWithin (insetBounds 4 bounds)
   let boundary = mkBounds bounds
       flooring = mkFloors bounds
       pillars = mkTiles Wall randomPillarLocations

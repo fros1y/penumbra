@@ -75,20 +75,6 @@ updateEntity :: Actions -> (EntityRef, Entity) -> GameM ()
 updateEntity actions e@(0, _) = updatePlayer actions e
 updateEntity _ _ = return ()
 
-entitiesAtCoord :: Coord -> GameM [Entity]
-entitiesAtCoord coord = do
-  ents <- use entities
-  let atCoord entity = (entity ^. entityPos) == coord
-      ents' = IntMap.filter atCoord ents
-  return $ Prelude.map snd (IntMap.toList ents')
-
-checkCollision :: Coord -> GameM Bool
-checkCollision coord = do
-  entsAtCoord <- entitiesAtCoord coord
-  let ents = Prelude.filter obstructs entsAtCoord
-      foo = traceShow (length ents) ()
-  return $ (length ents) > 0
-
 moveCheckingForCollision :: DeltaCoord -> (EntityRef, Entity) -> GameM Bool
 moveCheckingForCollision delta (ref, ent) = do
   let target = (ent ^. entityPos) + delta

@@ -11,6 +11,8 @@ import           Prelude              hiding (Either (..), id, (.))
 
 import           Entity
 import           World
+import Coord
+import Obstruction
 
 newtype GameM a = GameM {
   runGame :: (State.StateT World IO) a
@@ -53,3 +55,17 @@ instance GameFunctions GameM where
   getEntity r = do
     ents <- (use entities)
     return $ IntMap.lookup r ents
+
+
+entitiesAtCoord :: Coord -> GameM [Entity]
+entitiesAtCoord coord = do
+  ents <- use entities
+  let atCoord entity = (entity ^. entityPos) == coord
+      ents' = IntMap.filter atCoord ents
+  return $ Prelude.map snd (IntMap.toList ents')
+
+checkCollision :: Coord -> GameM Bool
+checkCollision coord = do
+  entsAtCoord <- entitiesAtCoord coord
+  let ents = Prelude.filter obstructs entsAtCoord
+  return $ (length ents) > 0

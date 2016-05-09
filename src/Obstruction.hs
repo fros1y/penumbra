@@ -4,6 +4,8 @@ import           Control.Lens
 import           Prelude          hiding (Either (..), id, (.))
 
 import           Entity
+import Coord
+
 
 class Obstruction a where
   obstructs :: a -> Bool

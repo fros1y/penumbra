@@ -11,6 +11,7 @@ import           Data.Colour         as Colour
 import           Data.Colour.Names   as Colour
 import           Data.Colour.SRGB    as Colour
 import           Data.Map.Strict     as Map
+import           Data.IntMap         as IntMap
 import           Data.Maybe          (fromJust, isJust, isNothing)
 import           Debug.Trace
 import           GHC.Generics
@@ -26,7 +27,7 @@ import           GameMonad
 import           Renderable
 import           Symbols
 import           World
-
+import LOS
 -- DisplayContext
 data DisplayContext = DisplayContext {
   _wnd   :: SFML.RenderWindow,
@@ -102,33 +103,31 @@ renderAt coord a = do
   S.when (isJust timeBased) $ do
     time <- SFML.getElapsedTime (?context ^. clock)
     putSymbol coord ( (fromJust timeBased) time)
---
---
--- renderCoordMap :: (?context :: DisplayContext, Renderable a) => DisplayContext -> WorldCoord -> CoordMap a -> IO ()
--- renderCoordMap context playerCoord coordMap = do
---   let list = Map.toList coordMap
---   mapped <- mapM (fromWorldToScreen playerCoord) list
---   mapM_ renderAt mapped
---
 
 convert (SFML.Vec2u xu yu) = SFML.Vec2f (fromIntegral xu) (fromIntegral yu)
 convertfromCoord (Coord xc yc) = SFML.Vec2f (fromIntegral xc) (fromIntegral yc)
 
-drawEntity :: (?context :: DisplayContext) => Entity -> IO ()
-drawEntity e = renderAt pos e where
-  pos = celltoScreen (e ^. entityPos)
+drawEntity :: (?context :: DisplayContext) => (Entity -> Bool) -> Entity -> IO ()
+drawEntity lineOfSight e = do
+  let pos = celltoScreen (e ^. entityPos)
+  S.when (lineOfSight e) $ renderAt pos e
 
 render :: (?context :: DisplayContext) => GameM ()
 render = do
   (_, player) <- getPlayer
-  let playerPos = (player ^. entityPos)
   ents <- use entities
+  let playerPos = (player ^. entityPos)
+      opaqueBuilder = buildOpaqueMapM checkCollision
+      entityList = IntMap.elems ents
+      entityPoses = Prelude.map _entityPos entityList
+  opaqueMap <- S.foldM opaqueBuilder Map.empty entityPoses
   S.liftIO $ do
+    print opaqueMap
     SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
     view <- SFML.getDefaultView (?context ^. wnd)
     SFML.setViewCenter view $ convertfromCoord $ celltoScreen playerPos
     SFML.setView (?context ^. wnd) view
-    mapM_ drawEntity ents
+    mapM_ (drawEntity (entitiesInLineOfSight opaqueMap player)) ents
     SFML.display (?context ^. wnd)
 
 handleResize :: (?context :: DisplayContext) => Int -> Int -> IO ()

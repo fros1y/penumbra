@@ -11,6 +11,7 @@ import           GHC.Generics
 import           Prelude            hiding (Either (..), id, (.))
 
 import           Coord
+import Illuminate
 
 -- Entity
 type EntityRef = Int
@@ -18,7 +19,6 @@ type TargetEntityRef = EntityRef
 
 data EntityType = Player |
                   Rat |
-                  Frog |
                   Wall |
                   Floor
                   deriving (Show, Eq, Generic)
@@ -26,7 +26,8 @@ data EntityType = Player |
 data Entity = Entity {
   _entityType  :: EntityType,
   _entityPos   :: Coord,
-  _entityAlive :: Bool
+  _entityAlive :: Bool,
+  _lightSource :: Maybe LightSource
 } deriving (Show, Generic)
 makeLenses ''Entity
 

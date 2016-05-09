@@ -6,6 +6,8 @@ module Serialize where
 import           Data.Aeson
 import           Data.Map.Strict as Map
 import           GHC.Generics
+import           Data.Colour         as Colour
+import           Data.Colour.Names   as Colour
 
 import           Actions
 import           Coord
@@ -13,6 +15,7 @@ import           Direction
 import           Entity
 import           PlayerCommand
 import           World
+import Illuminate
 
 instance ToJSON Direction
 instance FromJSON Direction
@@ -29,6 +32,9 @@ instance FromJSON World
 instance ToJSON PlayerCommand
 instance FromJSON PlayerCommand
 
+instance ToJSON LightSource
+instance FromJSON LightSource
+
 instance ToJSON Entity
 instance FromJSON Entity
 
@@ -37,3 +43,9 @@ instance FromJSON Action
 
 instance ToJSON EntityType
 instance FromJSON EntityType
+
+instance ToJSON (Colour.Colour Double) where
+  toJSON = toJSON . show
+
+instance FromJSON (Colour.Colour Double) where
+  parseJSON  = fmap read . parseJSON

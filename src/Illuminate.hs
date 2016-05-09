@@ -1,4 +1,4 @@
--- type IlluminationMap = LMap.Map Coord (Maybe Illumination)
+{-# LANGUAGE DeriveGeneric   #-}
 
 module Illuminate where
 import           Control.Category
@@ -10,10 +10,15 @@ import qualified Data.Map.Lazy       as LMap
 import qualified Data.Map.Strict     as Map
 import           Data.Maybe          (fromJust)
 import           Prelude             hiding (Either (..), id, (.))
+import GHC.Generics
 
 import           Coord
 
 
+data LightSource = LightSource {
+  _intensity :: Intensity,
+  _color :: Colour.Colour Double
+} deriving (Show, Eq, Generic)
 
 type Intensity = Double
 
