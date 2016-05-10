@@ -49,3 +49,9 @@ instance ToJSON (Colour.Colour Double) where
 
 instance FromJSON (Colour.Colour Double) where
   parseJSON  = fmap read . parseJSON
+
+instance (ToJSON a, Show a) => ToJSON (CoordMap a) where
+  toJSON = toJSON . show
+
+instance (FromJSON a, Read a) => FromJSON (CoordMap a) where
+  parseJSON = fmap read. parseJSON

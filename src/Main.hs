@@ -38,7 +38,7 @@ main = do
 
 setup :: (?context :: DisplayContext) => GameM ()
 setup = do
-  let player = Entity {_entityType=Player, _entityPos=Coord 20 20, _entityAlive=True}
+  let player = Entity {_entityType=Player, _entityPos=Coord 20 20, _entityAlive=True, _lightSource = Nothing}
   addEntityAt (0, player)
   level <- mkRandomLevel (Bounds origin (Coord 40 40))
   addEntities level

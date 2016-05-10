@@ -16,3 +16,7 @@ instance Obstruction Entity where
 instance Obstruction EntityType where
   obstructs Floor = False
   obstructs _ = True
+
+instance (Obstruction a) => Obstruction (Maybe a) where
+  obstructs Nothing = False
+  obstructs (Just a) = obstructs a

@@ -1,4 +1,3 @@
-{-# LANGUAGE ImplicitParams #-}
 module Level where
 
 import           Control.Category
@@ -48,7 +47,7 @@ fromLevelBuilder :: LevelBuilder -> [Entity]
 fromLevelBuilder (LevelBuilder builder) = Prelude.map fromEntityType (toList builder)
 
 fromEntityType :: (Coord, EntityType) -> Entity
-fromEntityType (coord, tileType) = Entity {_entityType=tileType, _entityPos=coord, _entityAlive = True}
+fromEntityType (coord, tileType) = Entity {_entityType=tileType, _entityPos=coord, _entityAlive = True, _lightSource = Nothing}
 
 mkFloors :: Bounds -> LevelBuilder
 mkFloors bounds = mkTiles Floor $ coordsWithin bounds
@@ -57,7 +56,7 @@ mkBounds :: Bounds -> LevelBuilder
 mkBounds bounds = mkTiles Wall $ borderCoords bounds
 
 conflict :: LevelBuilder -> LevelBuilder -> Bool
-conflict (LevelBuilder builder1) (LevelBuilder builder2) = (Map.size intersect) /= 0 where
+conflict (LevelBuilder builder1) (LevelBuilder builder2) = Map.size intersect /= 0 where
   intersect = Map.intersection builder1 builder2
 
 mkBoringLevel :: Bounds -> [Entity]

@@ -6,8 +6,9 @@ import qualified Control.Monad.Random as Random
 import qualified Control.Monad.State  as State
 import           Data.Default
 import           Data.IntMap.Strict   as IntMap
-import           Data.Maybe           (fromJust)
+import           Data.Maybe           (fromJust, isNothing)
 import           Prelude              hiding (Either (..), id, (.))
+import qualified Data.Map.Lazy as Map
 
 import           Entity
 import           World
@@ -56,16 +57,44 @@ instance GameFunctions GameM where
     ents <- (use entities)
     return $ IntMap.lookup r ents
 
+invalidateCache :: GameM ()
+invalidateCache = do
+  entityRefByCoord .= Map.empty
 
-entitiesAtCoord :: Coord -> GameM [Entity]
-entitiesAtCoord coord = do
+invalidateCacheFor :: Coord -> GameM ()
+invalidateCacheFor coord = do
+  cache <- use entityRefByCoord
+  entityRefByCoord .= Map.delete coord cache
+
+buildCacheFor :: Coord -> GameM ([EntityRef])
+buildCacheFor coord = do
+  cache <- use entityRefByCoord
+  ents <- entitiesForCoord' coord
+  entityRefByCoord .= Map.insert coord ents cache
+  return ents
+
+getCacheFor :: Coord -> GameM (Maybe [EntityRef])
+getCacheFor coord = do
+  cache <- use entityRefByCoord
+  return $ Map.lookup coord cache
+
+entitiesForCoord :: Coord -> GameM [EntityRef]
+entitiesForCoord coord = do
+  let helper (Just v) = return v
+      helper Nothing = buildCacheFor coord
+  cacheEntry <- getCacheFor coord
+  helper cacheEntry
+
+entitiesForCoord' :: Coord -> GameM [EntityRef]
+entitiesForCoord' coord = do
   ents <- use entities
   let atCoord entity = (entity ^. entityPos) == coord
       ents' = IntMap.filter atCoord ents
-  return $ Prelude.map snd (IntMap.toList ents')
+  return $ Prelude.map fst (IntMap.toList ents')
 
 checkCollision :: Coord -> GameM Bool
 checkCollision coord = do
-  entsAtCoord <- entitiesAtCoord coord
-  let ents = Prelude.filter obstructs entsAtCoord
-  return $ (length ents) > 0
+  let obstructsM = State.liftM obstructs
+  entsAtCoord <- entitiesForCoord coord
+  ents <- State.filterM (obstructsM . getEntity) entsAtCoord
+  return $ not (Prelude.null ents)
