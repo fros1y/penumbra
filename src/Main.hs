@@ -68,22 +68,15 @@ gameLoop = do
 updateWorld :: Actions -> GameM ()
 updateWorld actions = do
   ents <- use entities
-  let moveOrder = id (IntMap.toList ents)
+  let moveOrder = IntMap.map (_entityRef) ents
   mapM_ (updateEntity actions) moveOrder
 
-updateEntity :: Actions -> (EntityRef, Entity) -> GameM ()
-updateEntity actions e@(0, _) = updatePlayer actions e
+updateEntity :: Actions -> EntityRef -> GameM ()
+updateEntity actions 0 = updatePlayer actions
 updateEntity _ _ = return ()
 
-moveCheckingForCollision :: DeltaCoord -> (EntityRef, Entity) -> GameM Bool
-moveCheckingForCollision delta (ref, ent) = do
-  let target = (ent ^. entityPos) + delta
-  collision <- checkCollision target
-  S.unless collision $ setEntity ref (ent & entityPos .~ target)
-  return (not collision)
-
-updatePlayer :: Actions -> (EntityRef, Entity) -> GameM ()
-updatePlayer (ActMoveBy delta:as) e = do
-  moveCheckingForCollision delta e
-  updatePlayer as e
-updatePlayer [] e = return ()
+updatePlayer :: Actions -> GameM ()
+updatePlayer (ActMoveBy delta:as) = do
+  moveCheckingForCollision delta 0
+  updatePlayer as
+updatePlayer [] = return ()

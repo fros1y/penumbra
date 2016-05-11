@@ -24,6 +24,7 @@ data EntityType = Player |
                   deriving (Show, Eq, Generic)
 
 data Entity = Entity {
+  _entityRef   :: EntityRef,
   _entityType  :: EntityType,
   _entityPos   :: Coord,
   _entityAlive :: Bool,

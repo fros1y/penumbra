@@ -16,6 +16,7 @@ import           Entity
 import           PlayerCommand
 import           World
 import Illuminate
+import Memory
 
 instance ToJSON Direction
 instance FromJSON Direction
@@ -43,6 +44,9 @@ instance FromJSON Action
 
 instance ToJSON EntityType
 instance FromJSON EntityType
+
+instance ToJSON Memory
+instance FromJSON Memory
 
 instance ToJSON (Colour.Colour Double) where
   toJSON = toJSON . show

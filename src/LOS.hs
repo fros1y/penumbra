@@ -3,6 +3,8 @@ module LOS where
 
 import qualified Data.Map.Lazy as Map
 import Data.Maybe (isJust)
+import Control.Monad.State as S
+import Data.List (sort, unfoldr)
 
 import Coord
 import GameMonad
@@ -29,7 +31,7 @@ buildOpaqueMap getOpaque coord existingMap =  if getOpaque coord
 
 inLineOfSight :: OpaqueMap -> Coord -> Coord -> Bool
 inLineOfSight opaqueMap
-              coord2 coord1 = if (coord1 == coord2) || (nextCoord == coord2) then True
+              coord1 coord2 = if (coord1 == coord2) || (nextCoord == coord2) then True
                               else (not $ isOpaque opaqueMap nextCoord) &&
                                     inLineOfSight opaqueMap nextCoord coord2 where
                                       nextCoord = nextInLine coord1 coord2
@@ -42,6 +44,7 @@ nextInLine c1 c2 = head $ lineCoords c1 c2
 
 lineCoords :: Coord -> Coord -> [Coord]
 lineCoords c1 c2 = map fromPair $ (tail $ bla (toPair c1) (toPair c2))
+--lineCoords c1 c2 = map fromPair $ line (toPair c1) (toPair c2)
 
 -- | Bresenham's line algorithm. http://www.roguebasin.com/index.php?title=Bresenham%27s_Line_Algorithm
 -- Includes the first point and goes through the second to infinity.

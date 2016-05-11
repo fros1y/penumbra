@@ -28,6 +28,8 @@ import           Renderable
 import           Symbols
 import           World
 import LOS
+import Memory
+
 -- DisplayContext
 data DisplayContext = DisplayContext {
   _wnd   :: SFML.RenderWindow,
@@ -80,9 +82,11 @@ convertColourToSFML :: Colour.Colour Double -> SFML.Color
 convertColourToSFML c = SFML.Color r g b 255 where
   Colour.RGB r g b = Colour.toSRGB24 c
 
-putSymbol :: (?context :: DisplayContext) => Coord -> Symbol -> IO ()
-putSymbol coord symbol = do
-  let c = (symbol ^. baseColor)
+putSymbol :: (?context :: DisplayContext) => Coord -> Symbol -> SeenRemembered -> IO ()
+putSymbol coord symbol seenRemembered = do
+  let c = case seenRemembered of
+              Seen -> (symbol ^. baseColor)
+              Remembered -> Colour.red
       t = (symbol ^. glyph)
       Coord tx ty = coord
       v = SFML.Vec2f (fromIntegral tx) (fromInteger ty)
@@ -95,40 +99,45 @@ putSymbol coord symbol = do
   SFML.drawText (?context ^. wnd) txt (Just SFML.renderStates)
   SFML.destroy txt
 
-renderAt :: (?context :: DisplayContext, Renderable a) => ScreenCoord -> a -> IO ()
-renderAt coord a = do
+renderAt :: (?context :: DisplayContext, Renderable a) => ScreenCoord -> a -> SeenRemembered -> IO ()
+renderAt coord a seenRemembered = do
   let symbol = getSymbol a
       timeBased = (symbol ^. changeOverTime)
-  S.when (isNothing timeBased) $ putSymbol coord symbol
+  S.when (isNothing timeBased) $ putSymbol coord symbol seenRemembered
   S.when (isJust timeBased) $ do
     time <- SFML.getElapsedTime (?context ^. clock)
-    putSymbol coord ( (fromJust timeBased) time)
+    putSymbol coord ( (fromJust timeBased) time) seenRemembered
 
 convert (SFML.Vec2u xu yu) = SFML.Vec2f (fromIntegral xu) (fromIntegral yu)
 convertfromCoord (Coord xc yc) = SFML.Vec2f (fromIntegral xc) (fromIntegral yc)
 
-drawEntity :: (?context :: DisplayContext) => (Entity -> Bool) -> Entity -> IO ()
-drawEntity lineOfSight e = do
+seeEntity :: (?context :: DisplayContext) => (Entity -> Bool) -> Entity -> GameM ()
+seeEntity lineOfSight e = do
   let pos = celltoScreen (e ^. entityPos)
-  S.when (lineOfSight e) $ renderAt pos e
+  let inLine = lineOfSight e
+  remembered <- inMemory e pos
+  S.when inLine $ do
+    remember e
+    S.liftIO $ print $ "remebered: " ++ show e
+    S.liftIO $ renderAt pos e Seen
+  S.when (remembered && not inLine) $ do
+    S.liftIO $ renderAt pos e Remembered
 
 render :: (?context :: DisplayContext) => GameM ()
 render = do
-  (_, player) <- getPlayer
+  player <- getPlayer
   ents <- use entities
   let playerPos = (player ^. entityPos)
       opaqueBuilder = buildOpaqueMapM checkCollision
-      entityList = IntMap.elems ents
-      entityPoses = Prelude.map _entityPos entityList
+      entityPoses = IntMap.map _entityPos ents
   opaqueMap <- S.foldM opaqueBuilder Map.empty entityPoses
   S.liftIO $ do
-    print opaqueMap
     SFML.clearRenderWindow (?context ^. wnd) $ SFML.Color 0 0 0 255
     view <- SFML.getDefaultView (?context ^. wnd)
     SFML.setViewCenter view $ convertfromCoord $ celltoScreen playerPos
     SFML.setView (?context ^. wnd) view
-    mapM_ (drawEntity (entitiesInLineOfSight opaqueMap player)) ents
-    SFML.display (?context ^. wnd)
+  mapM_ (seeEntity (entitiesInLineOfSight opaqueMap player)) ents
+  S.liftIO $ SFML.display (?context ^. wnd)
 
 handleResize :: (?context :: DisplayContext) => Int -> Int -> IO ()
 handleResize w h = do
