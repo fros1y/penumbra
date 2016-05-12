@@ -129,13 +129,13 @@ moveCheckingForCollision delta ref = do
   State.unless collision $ moveEntity ref target
   return (not collision)
 
-inMemory :: Entity -> Coord -> GameM (Bool)
-inMemory e pos = do
+inMemory :: Entity -> GameM (Bool)
+inMemory e = do
   locations <- use (playerMemory . entityLocations)
   let memory = IntMap.lookup (e ^. entityRef) locations
   return $ case memory of
     Nothing -> False
-    (Just coord) -> pos == coord
+    (Just coord) -> coord == (e ^. entityPos)
 
 remember :: Entity -> GameM ()
 remember e = do (playerMemory . entityLocations) %= update where
