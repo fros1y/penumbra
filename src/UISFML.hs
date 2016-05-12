@@ -86,7 +86,7 @@ putSymbol :: (?context :: DisplayContext) => Coord -> Symbol -> SeenRemembered -
 putSymbol coord symbol seenRemembered = do
   let c = case seenRemembered of
               Seen -> (symbol ^. baseColor)
-              Remembered -> Colour.red
+              Remembered -> Colour.darkgrey
       t = (symbol ^. glyph)
       Coord tx ty = coord
       v = SFML.Vec2f (fromIntegral tx) (fromInteger ty)
@@ -118,7 +118,6 @@ seeEntity lineOfSight e = do
   remembered <- inMemory e
   S.when inLine $ do
     remember e
-    S.liftIO $ print $ "remebered: " ++ show e
     S.liftIO $ renderAt pos e Seen
   S.when (remembered && not inLine) $ do
     S.liftIO $ renderAt pos e Remembered
