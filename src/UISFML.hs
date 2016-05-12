@@ -115,7 +115,7 @@ seeEntity :: (?context :: DisplayContext) => (Entity -> Bool) -> Entity -> GameM
 seeEntity lineOfSight e = do
   let pos = celltoScreen (e ^. entityPos)
   let inLine = lineOfSight e
-  remembered <- inMemory e pos
+  remembered <- inMemory e
   S.when inLine $ do
     remember e
     S.liftIO $ print $ "remebered: " ++ show e
