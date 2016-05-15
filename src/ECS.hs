@@ -74,21 +74,22 @@ entitiesWithAll components = IntMap.filter (`entityHasAll` components)
 
 data Action = AMove DeltaCoord
             | AAttack EntityRef Int
-            | ADone
+            | APlayerTurnDone
 
 type Actions = [Action]
 
 data Event = EMovement Coord
            | EDamage EntityRef Int
            | ECollision EntityRef
-           | EActionPointsRecover Int
+           | EActionPointsRecover
            | EActionPointsExpend Int
 
 type Events = IntMap.IntMap [Event]
 type World = Entities
 
 
-render = undefined
+render :: ObservedWorld -> IO ()
+render ob = print ob
 
 rotate :: ActionQueue -> ActionQueue
 rotate queue = queue'' where
@@ -112,15 +113,22 @@ getByEntityRef ents ref = fromJust $ IntMap.lookup ref ents
 setByEntityRef :: Entities -> EntityRef -> Entity -> Entities
 setByEntityRef ents ref ent = IntMap.insert ref ent ents
 
-gameLoop world queue = do
+mkPlayer = mkEntity [CRef #= playerEntityRef, CPosition #= Coord 0 0, CActionPoints #= ActionPoints 100 100]
+
+baseWorld = IntMap.singleton 0 mkPlayer
+baseQueue = Dequeue.pushFront (Dequeue.empty :: ActionQueue) playerEntityRef
+
+gameLoop (world, queue) = do
   render (observeWorld world $ getPlayerEntity world)
   let (activeEntityRef, queue') = getNextEntityToAct (sliceOf CActionPoints world) queue
       activeEntity = getByEntityRef world activeEntityRef
       observation = observeWorld world activeEntity -- handle memory?
-  actions <- getEntityActions observation activeEntity
+  actions <-  if activeEntityRef == playerEntityRef
+              then getPlayerActions
+              else getEntityActions observation activeEntity
   events <- evaluateActions world actions activeEntity
   let world' = applyEvents events world
-  gameLoop world' queue'
+  gameLoop (world', queue')
 
 type ActionQueue = Dequeue.BankersDequeue EntityRef
 
@@ -156,6 +164,10 @@ applyEvents :: Events -> World -> World
 applyEvents events world = IntMap.foldrWithKey applyEventsToRef world events
 
 applyEventsToRef :: EntityRef -> [Event] -> World -> World
+
+applyEventsToRef allEntities events world = IntMap.foldrWithKey apply world world where
+  apply ref _ worldState = applyEventsToRef ref events worldState
+
 applyEventsToRef ref events world = world' where
     entity' = foldr applyEvent entity events
     entity = getByEntityRef world ref
@@ -164,20 +176,28 @@ applyEventsToRef ref events world = world' where
 --- Where the magic is
 
 getEntityActions :: ObservedWorld -> Entity -> IO Actions
-getEntityActions observation entity = return [ADone]
+getEntityActions observation entity = return []
 
-mkEventFor :: Entity-> Event -> Events
+getPlayerActions :: IO Actions
+getPlayerActions = do
+  print "here"
+  input <- getChar
+  return [APlayerTurnDone]
+
+mkEventFor :: Entity -> Event -> Events
 mkEventFor entity event = IntMap.singleton ref [event] where
   ref = entity # CRef
---
--- mkEventForAllEntities
+
+allEntities = (-1) :: Int
+
+mkEventForAllEntities :: Event -> Events
+mkEventForAllEntities event = IntMap.singleton allEntities [event]
 
 ---- EVALUATE ACITON ---
 evaluateAction :: World -> Entity -> Action -> IO Events
 
-evaluateAction _ entity ADone = return recharge where
-  recharge = mkEventFor entity (EActionPointsRecover rate)
-  rate = refreshSpeed (entity # CActionPoints)
+evaluateAction _ entity APlayerTurnDone = return recharge where
+  recharge = mkEventForAllEntities EActionPointsRecover
 
 evaluateAction world entity (AMove delta) = return motion where
   motion = mkEventFor entity (EMovement coord)
@@ -192,9 +212,9 @@ applyEvent (EActionPointsExpend x) entity = entity #: (CActionPoints #= newAPs) 
   (ActionPoints curr _)= entity # CActionPoints
   newAPs = (entity # CActionPoints) {currPoints = curr - x}
 
-applyEvent (EActionPointsRecover x) entity = entity #: (CActionPoints #= newAPs) where
-  (ActionPoints curr _)= entity # CActionPoints
-  newAPs = (entity # CActionPoints) {currPoints = curr + x}
+applyEvent EActionPointsRecover entity = entity #: (CActionPoints #= newAPs) where
+  (ActionPoints _ refresh)= entity # CActionPoints
+  newAPs = (entity # CActionPoints) {currPoints = refresh}
 
 applyEvent (EMovement coord) entity = entity #: (CPosition #= coord)
 
