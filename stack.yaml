@@ -5,4 +5,5 @@ packages:
 extra-deps:
 - SFML-2.3.2.2
 - dequeue-0.1.12
+- reactive-banana-1.1.0.0
 resolver: lts-5.13
