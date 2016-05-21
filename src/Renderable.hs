@@ -20,8 +20,8 @@ instance Renderable Entity where
   getSymbol entity = getSymbol (entity ^. entityType)
 
 instance Renderable EntityType where
-  getSymbol Player  = Symbol '@' Colour.white Nothing
-  getSymbol Floor   = Symbol '·' Colour.dimgray Nothing
-  getSymbol Rat     = Symbol 'r' Colour.brown Nothing
-  getSymbol Wall    = Symbol '#' Colour.white Nothing
-  getSymbol _       = Symbol '?' Colour.dimgray Nothing
+  getSymbol Player  = Symbol '@' Colour.white
+  getSymbol Floor   = Symbol '·' Colour.dimgray
+  getSymbol Rat     = Symbol 'r' Colour.brown
+  getSymbol Wall    = Symbol '#' Colour.white
+  getSymbol _       = Symbol '?' Colour.dimgray

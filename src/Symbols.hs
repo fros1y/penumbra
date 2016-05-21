@@ -15,18 +15,12 @@ import qualified SFML.Window       as SFML
 -- Symbol
 data Symbol = Symbol {
   _glyph          :: Char,
-  _baseColor      :: Colour.Colour Double,
-  _changeOverTime :: Maybe (SFML.Time -> Symbol)
+  _baseColor      :: Colour.Colour Double
 } deriving (Generic)
 makeLenses ''Symbol
 
+instance Show Symbol where
+  show Symbol {_glyph = glyph} = show glyph
+
 instance Default Symbol where
-  def = Symbol '?' Colour.white Nothing
-
-
-flicker :: SFML.Time -> Symbol
-flicker t = Symbol '◯' color Nothing where
-  one = Colour.yellow
-  two = Colour.red
-  blend = abs ( sin (fromIntegral (SFML.asMilliseconds t)  / 1000) )
-  color = Colour.blend blend one two
+  def = Symbol '?' Colour.white

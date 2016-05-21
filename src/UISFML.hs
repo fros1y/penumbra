@@ -102,11 +102,7 @@ putSymbol coord symbol seenRemembered = do
 renderAt :: (?context :: DisplayContext, Renderable a) => ScreenCoord -> a -> SeenRemembered -> IO ()
 renderAt coord a seenRemembered = do
   let symbol = getSymbol a
-      timeBased = (symbol ^. changeOverTime)
-  S.when (isNothing timeBased) $ putSymbol coord symbol seenRemembered
-  S.when (isJust timeBased) $ do
-    time <- SFML.getElapsedTime (?context ^. clock)
-    putSymbol coord ( (fromJust timeBased) time) seenRemembered
+  putSymbol coord symbol seenRemembered
 
 convert (SFML.Vec2u xu yu) = SFML.Vec2f (fromIntegral xu) (fromIntegral yu)
 convertfromCoord (Coord xc yc) = SFML.Vec2f (fromIntegral xc) (fromIntegral yc)
